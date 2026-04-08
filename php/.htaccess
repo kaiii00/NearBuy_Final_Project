@@ -1,0 +1,13 @@
+# 1. Enable the rewrite engine
+RewriteEngine On
+
+# 2. Condition: If the requested URI is NOT a real file
+RewriteCond %{REQUEST_FILENAME} !-f
+
+# 3. Condition: If the requested URI is NOT a real directory
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# 4. Rule: Send everything else to index.php
+# [QSA] ensures query strings (like ?id=1) are preserved
+# [L] stops further rules from processing
+RewriteRule ^ index.php [QSA,L]

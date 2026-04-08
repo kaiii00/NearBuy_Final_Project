@@ -1,0 +1,72 @@
+services:
+
+  postgres_db:
+    image: postgres:15-alpine
+    container_name: postgres_db
+    environment:
+      POSTGRES_DB: nearbuy
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d nearbuy"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  php_api:
+    build: ./php
+    container_name: php_api
+    ports:
+      - "8001:80"
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+
+  django_api:
+    build: ./django
+    container_name: django_api
+    command: >
+         sh -c "python manage.py makemigrations users &&
+         python manage.py migrate &&
+         python manage.py runserver 0.0.0.0:8000"
+    ports:
+      - "8002:8000"
+    environment:
+      - DB_HOST=postgres_db
+      - DB_NAME=nearbuy
+      - DB_USER=admin
+      - DB_PASSWORD=admin123
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+
+  springboot_app:
+    build: ./springboot
+    container_name: springboot_app
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres_db:5432/nearbuy
+      - SPRING_DATASOURCE_USERNAME=admin
+      - SPRING_DATASOURCE_PASSWORD=admin123
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+
+  react_front:
+    build: ./react
+    container_name: react_front
+    ports:
+      - "3000:3000"
+    depends_on:
+      - php_api
+      - django_api
+      - springboot_app
+
+volumes:
+  postgres_data:
