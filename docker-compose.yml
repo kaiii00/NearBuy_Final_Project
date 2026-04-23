@@ -23,6 +23,8 @@ services:
     container_name: php_api
     ports:
       - "8001:80"
+    environment:
+      - DJANGO_SECRET_KEY=nearbuy_super_secret_jwt_key_2024_shared
     depends_on:
       postgres_db:
         condition: service_healthy

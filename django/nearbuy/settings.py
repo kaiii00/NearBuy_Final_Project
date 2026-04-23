@@ -1,8 +1,9 @@
 import os
 from pathlib import Path
+from datetime import timedelta
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-SECRET_KEY = 'nearbuy-secret-key-change-in-production'
+SECRET_KEY = 'nearbuy_super_secret_jwt_key_2024_shared'
 DEBUG = True
 ALLOWED_HOSTS = ['*']
 
@@ -63,6 +64,16 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.AllowAny',
+    ),
+}
+
+SIMPLE_JWT = {
+    'SIGNING_KEY': 'nearbuy_super_secret_jwt_key_2024_shared',
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=2),
+    'ALGORITHM': 'HS256',
 }
 
 CORS_ALLOW_ALL_ORIGINS = True
