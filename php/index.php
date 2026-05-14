@@ -1,27 +1,31 @@
 <?php
-$uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-$uri = rtrim($uri, '/');
-$method = $_SERVER['REQUEST_METHOD'];
+// Chat has been moved to Spring Boot WebSocket (/ws/chat)
+// This PHP service will handle content APIs (products, orders, categories, delivery)
+// coming soon.
 
-if ($method === 'OPTIONS') {
-    http_response_code(200);
-    exit();
-}
+$uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+$method = $_SERVER['REQUEST_METHOD'];
 
 header('Content-Type: application/json');
 
-if ($uri === '/api/health') {
-    echo json_encode(['status' => 'UP', 'service' => 'nearbuy-php', 'version' => '1.0.0']);
+// Health check
+if ($method === 'GET' && $uri === '/api/health') {
+    echo json_encode(['status' => 'PHP content API is running.']);
     exit;
 }
 
-if (str_starts_with($uri, '/api/chat')) {
-    require_once __DIR__ . '/api/chat/index.php';
-} elseif (str_starts_with($uri, '/api/feedback')) {
+// Feedback (kept from original)
+if (str_starts_with($uri, '/api/feedback')) {
     require_once __DIR__ . '/api/feedback/index.php';
-} elseif (str_starts_with($uri, '/api/ratings')) {
-    require_once __DIR__ . '/api/ratings/index.php';
-} else {
-    http_response_code(404);
-    echo json_encode(['error' => 'Route not found']);
+    exit;
 }
+
+// Ratings (kept from original)
+if (str_starts_with($uri, '/api/ratings')) {
+    require_once __DIR__ . '/api/ratings/index.php';
+    exit;
+}
+
+// 404
+http_response_code(404);
+echo json_encode(['error' => 'Route not found.']);

@@ -67,7 +67,6 @@ services:
       - "3000:3000"
     depends_on:
       - php_api
-      - django_api
       - springboot_app
 
 volumes:

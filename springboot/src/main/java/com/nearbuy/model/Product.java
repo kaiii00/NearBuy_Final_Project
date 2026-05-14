@@ -40,7 +40,7 @@ public class Product {
 
     private String category;
 
-    @Column(name = "image_url")
+    @Column(name = "image_url", columnDefinition = "TEXT")
     private String imageUrl;
 
     private String unit;  // e.g., "kg", "pcs", "liter"

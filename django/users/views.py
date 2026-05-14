@@ -1,49 +1,75 @@
-from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-from django.contrib.auth import authenticate
-from rest_framework_simplejwt.tokens import RefreshToken
-from .models import User
-from .serializers import RegisterSerializer, UserSerializer
+from .models import Notification
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def health(request):
+    return Response({'status': 'Django content API is running.'})
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def get_notifications(request):
+    user_id = request.query_params.get('user_id')
+    if not user_id:
+        return Response({'error': 'user_id is required'}, status=400)
+    notifications = Notification.objects.filter(user_id=user_id)
+    data = [{
+        'id': n.id,
+        'type': n.type,
+        'title': n.title,
+        'message': n.message,
+        'order_id': n.order_id,
+        'is_read': n.is_read,
+        'created_at': n.created_at,
+    } for n in notifications]
+    return Response(data)
+
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
-def register(request):
-    serializer = RegisterSerializer(data=request.data)
-    if serializer.is_valid():
-        serializer.save()
-        return Response({'message': 'User registered successfully.'}, status=status.HTTP_201_CREATED)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+def create_notification(request):
+    data = request.data
+    n = Notification.objects.create(
+        user_id=data.get('user_id'),
+        type=data.get('type', 'general'),
+        title=data.get('title'),
+        message=data.get('message'),
+        order_id=data.get('order_id'),
+    )
+    return Response({'id': n.id, 'message': 'Notification created'}, status=201)
 
-@api_view(['POST'])
+
+@api_view(['PATCH'])
 @permission_classes([AllowAny])
-def login(request):
-    username = request.data.get('username')
-    password = request.data.get('password')
-    user = authenticate(username=username, password=password)
-    if user:
-        refresh = RefreshToken.for_user(user)
-        serializer = UserSerializer(user)
-        return Response({
-            'message': 'Login successful.',
-            'access': str(refresh.access_token),
-            'refresh': str(refresh),
-            'user': serializer.data
-        })
-    return Response({'error': 'Invalid credentials.'}, status=status.HTTP_401_UNAUTHORIZED)
+def mark_read(request, pk):
+    try:
+        n = Notification.objects.get(pk=pk)
+        n.is_read = True
+        n.save()
+        return Response({'success': True})
+    except Notification.DoesNotExist:
+        return Response({'error': 'Not found'}, status=404)
+
+
+@api_view(['PATCH'])
+@permission_classes([AllowAny])
+def mark_all_read(request):
+    user_id = request.data.get('user_id')
+    if not user_id:
+        return Response({'error': 'user_id is required'}, status=400)
+    Notification.objects.filter(user_id=user_id, is_read=False).update(is_read=True)
+    return Response({'success': True})
+
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def profile(request):
-    serializer = UserSerializer(request.user)
-    return Response(serializer.data)
-
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def all_users(request):
-    if request.user.role != 'admin':
-        return Response({'error': 'Unauthorized.'}, status=status.HTTP_403_FORBIDDEN)
-    users = User.objects.all()
-    serializer = UserSerializer(users, many=True)
-    return Response(serializer.data)
+@permission_classes([AllowAny])
+def unread_count(request):
+    user_id = request.query_params.get('user_id')
+    if not user_id:
+        return Response({'error': 'user_id is required'}, status=400)
+    count = Notification.objects.filter(user_id=user_id, is_read=False).count()
+    return Response({'count': count})

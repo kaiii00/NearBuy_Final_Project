@@ -24,7 +24,7 @@ public class OrderController {
     public ResponseEntity<OrderDTO.Response> createOrder(
             @Valid @RequestBody OrderDTO.CreateRequest request,
             Authentication auth) {
-        Long userId = (Long) auth.getPrincipal();
+        Long userId = Long.parseLong((String) auth.getPrincipal());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(orderService.createOrder(request, userId));
     }
@@ -32,7 +32,7 @@ public class OrderController {
     // GET /api/orders/my — buyer's own orders
     @GetMapping("/my")
     public ResponseEntity<List<OrderDTO.Response>> getMyOrders(Authentication auth) {
-        Long userId = (Long) auth.getPrincipal();
+        Long userId = Long.parseLong((String) auth.getPrincipal());
         return ResponseEntity.ok(orderService.getMyOrders(userId));
     }
 
@@ -40,7 +40,7 @@ public class OrderController {
     @GetMapping("/{id}")
     public ResponseEntity<OrderDTO.Response> getOrder(
             @PathVariable Long id, Authentication auth) {
-        Long userId = (Long) auth.getPrincipal();
+        Long userId = Long.parseLong((String) auth.getPrincipal());
         String role = getRoleFromAuth(auth);
         return ResponseEntity.ok(orderService.getOrderById(id, userId, role));
     }
@@ -49,7 +49,7 @@ public class OrderController {
     @GetMapping("/store/{storeId}")
     public ResponseEntity<List<OrderDTO.Response>> getStoreOrders(
             @PathVariable Long storeId, Authentication auth) {
-        Long userId = (Long) auth.getPrincipal();
+        Long userId = Long.parseLong((String) auth.getPrincipal());
         String role = getRoleFromAuth(auth);
         return ResponseEntity.ok(orderService.getStoreOrders(storeId, userId, role));
     }
@@ -60,7 +60,7 @@ public class OrderController {
             @PathVariable Long id,
             @Valid @RequestBody OrderDTO.StatusUpdateRequest request,
             Authentication auth) {
-        Long userId = (Long) auth.getPrincipal();
+        Long userId = Long.parseLong((String) auth.getPrincipal());
         String role = getRoleFromAuth(auth);
         return ResponseEntity.ok(
                 orderService.updateOrderStatus(id, request.getStatus(), userId, role));

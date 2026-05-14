@@ -1,6 +1,7 @@
 package com.nearbuy.controller;
 
 import com.nearbuy.dto.StoreDTO;
+import com.nearbuy.model.Store;
 import com.nearbuy.security.JwtUtils;
 import com.nearbuy.service.StoreService;
 import jakarta.validation.Valid;
@@ -32,6 +33,12 @@ public class StoreController {
         return ResponseEntity.ok(storeService.getAllActiveStores());
     }
 
+    // GET /api/stores/all — admin only, returns all stores regardless of status
+    @GetMapping("/all")
+    public ResponseEntity<List<StoreDTO.Response>> getAllStoresAdmin(Authentication auth) {
+        return ResponseEntity.ok(storeService.getAllStores());
+    }
+
     // GET /api/stores/{id} — public
     @GetMapping("/{id}")
     public ResponseEntity<StoreDTO.Response> getStore(@PathVariable Long id) {
@@ -41,7 +48,7 @@ public class StoreController {
     // GET /api/stores/my — store owner's own stores
     @GetMapping("/my")
     public ResponseEntity<List<StoreDTO.Response>> getMyStores(Authentication auth) {
-        Long userId = (Long) auth.getPrincipal();
+        Long userId = Long.parseLong((String) auth.getPrincipal());
         return ResponseEntity.ok(storeService.getStoresByOwner(userId));
     }
 
@@ -50,7 +57,7 @@ public class StoreController {
     public ResponseEntity<StoreDTO.Response> createStore(
             @Valid @RequestBody StoreDTO.CreateRequest request,
             Authentication auth) {
-        Long userId = (Long) auth.getPrincipal();
+        Long userId = Long.parseLong((String) auth.getPrincipal());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(storeService.createStore(request, userId));
     }
@@ -61,7 +68,7 @@ public class StoreController {
             @PathVariable Long id,
             @RequestBody StoreDTO.UpdateRequest request,
             Authentication auth) {
-        Long userId = (Long) auth.getPrincipal();
+        Long userId = Long.parseLong((String) auth.getPrincipal());
         String role = getRoleFromAuth(auth);
         return ResponseEntity.ok(storeService.updateStore(id, request, userId, role));
     }
@@ -69,10 +76,23 @@ public class StoreController {
     // DELETE /api/stores/{id}
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteStore(@PathVariable Long id, Authentication auth) {
-        Long userId = (Long) auth.getPrincipal();
+        Long userId = Long.parseLong((String) auth.getPrincipal());
         String role = getRoleFromAuth(auth);
         storeService.deleteStore(id, userId, role);
         return ResponseEntity.noContent().build();
+    }
+
+    // PATCH /api/stores/{id}/status — admin only
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<StoreDTO.Response> updateStoreStatus(
+            @PathVariable Long id,
+            @RequestBody java.util.Map<String, String> body,
+            Authentication auth) {
+        Long userId = Long.parseLong((String) auth.getPrincipal());
+        String role = getRoleFromAuth(auth);
+        StoreDTO.UpdateRequest request = new StoreDTO.UpdateRequest();
+        request.setStatus(Store.StoreStatus.valueOf(body.get("status")));
+        return ResponseEntity.ok(storeService.updateStore(id, request, userId, role));
     }
 
     private String getRoleFromAuth(Authentication auth) {

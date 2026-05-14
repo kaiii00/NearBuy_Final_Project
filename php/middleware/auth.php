@@ -1,6 +1,6 @@
 <?php
 function validateJWT($token) {
-    $secret = getenv('DJANGO_SECRET_KEY') ?: 'your-django-secret-key-here';
+    $secret = 'nearbuy_super_secret_jwt_key_2024_shared';
 
     $parts = explode('.', $token);
     if (count($parts) !== 3) return null;
@@ -38,5 +38,9 @@ function getAuthUser() {
         exit;
     }
 
-    return $payload;
+    return [
+        'user_id'  => $payload['userId'],
+        'username' => $payload['sub'],
+        'role'     => $payload['role'] ?? null,
+    ];
 }

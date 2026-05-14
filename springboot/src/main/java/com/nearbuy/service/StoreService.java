@@ -22,6 +22,11 @@ public class StoreService {
                 .stream().map(StoreDTO.Response::from).collect(Collectors.toList());
     }
 
+    public List<StoreDTO.Response> getAllStores() {
+        return storeRepository.findAll()
+                .stream().map(StoreDTO.Response::from).collect(Collectors.toList());
+    }
+
     public StoreDTO.Response getStoreById(Long id) {
         Store store = storeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Store not found with id: " + id));
@@ -63,7 +68,6 @@ public class StoreService {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Store not found with id: " + storeId));
 
-        // Only owner or admin can update
         if (!store.getOwnerId().equals(requesterId) && !"ADMIN".equalsIgnoreCase(role)) {
             throw new ForbiddenException("You don't have permission to update this store");
         }

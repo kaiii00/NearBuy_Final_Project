@@ -42,7 +42,7 @@ const ChatPage = () => {
     setSending(true);
     try {
       await sendMessage({
-        receiver_id: parseInt(userId),
+        receiverId: parseInt(userId),
         message: newMessage.trim(),
       });
       setNewMessage('');
@@ -63,7 +63,6 @@ const ChatPage = () => {
 
   return (
     <div style={styles.container}>
-      {/* Navbar */}
       <div style={styles.navbar}>
         <button style={styles.backBtn} onClick={() => navigate(-1)}>
           ← Back
@@ -72,7 +71,6 @@ const ChatPage = () => {
         <div />
       </div>
 
-      {/* Chat Header */}
       <div style={styles.chatHeader}>
         <div style={styles.avatar}>👤</div>
         <div>
@@ -81,7 +79,6 @@ const ChatPage = () => {
         </div>
       </div>
 
-      {/* Messages */}
       <div style={styles.messagesContainer}>
         {loading && <div style={styles.loading}>Loading messages...</div>}
 
@@ -92,7 +89,7 @@ const ChatPage = () => {
         )}
 
         {messages.map((msg) => {
-          const isMe = msg.sender_id === user.id;
+          const isMe = msg.senderId === user.id;
           return (
             <div
               key={msg.id}
@@ -113,7 +110,7 @@ const ChatPage = () => {
               >
                 <p style={styles.messageText}>{msg.message}</p>
                 <p style={styles.messageTime}>
-                  {new Date(msg.created_at).toLocaleTimeString([], {
+                  {new Date(msg.createdAt).toLocaleTimeString([], {
                     hour: '2-digit',
                     minute: '2-digit',
                   })}
@@ -126,7 +123,6 @@ const ChatPage = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
       <div style={styles.inputBar}>
         <input
           style={styles.input}

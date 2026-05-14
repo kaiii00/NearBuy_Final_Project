@@ -9,11 +9,13 @@ import com.nearbuy.repository.ProductRepository;
 import com.nearbuy.repository.StoreRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
+@Transactional
 public class ProductService {
 
     @Autowired
@@ -86,7 +88,6 @@ public class ProductService {
         if (request.getStatus() != null) product.setStatus(request.getStatus());
         if (request.getStock() != null) {
             product.setStock(request.getStock());
-            // Auto-update status based on stock
             if (product.getStatus() != Product.ProductStatus.DISCONTINUED) {
                 product.setStatus(request.getStock() > 0
                         ? Product.ProductStatus.AVAILABLE

@@ -1,13 +1,8 @@
 import axios from 'axios';
 
-const DJANGO_API = 'http://localhost:8002/api';
 const SPRING_API = 'http://localhost:8080/api';
 const PHP_API = 'http://localhost:8001/api';
-
-const djangoApi = axios.create({
-  baseURL: DJANGO_API,
-  headers: { 'Content-Type': 'application/json' },
-});
+const DJANGO_API = 'http://localhost:8002/api';
 
 const springApi = axios.create({
   baseURL: SPRING_API,
@@ -19,6 +14,11 @@ const phpApi = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+const djangoApi = axios.create({
+  baseURL: DJANGO_API,
+  headers: { 'Content-Type': 'application/json' },
+});
+
 const attachToken = (config) => {
   const token = localStorage.getItem('token');
   if (token) {
@@ -27,24 +27,41 @@ const attachToken = (config) => {
   return config;
 };
 
-djangoApi.interceptors.request.use(attachToken);
 springApi.interceptors.request.use(attachToken);
 phpApi.interceptors.request.use(attachToken);
+djangoApi.interceptors.request.use(attachToken);
 
-export const registerUser = (data) => axios.post(`${DJANGO_API}/users/register/`, data);
-export const loginUser = (data) => axios.post(`${DJANGO_API}/users/login/`, data);
+// Auth - Spring Boot
+export const registerUser = (data) => springApi.post('/auth/register', data);
+export const loginUser = (data) => springApi.post('/auth/login', data);
 
-export const getProfile = () => djangoApi.get('/users/profile/');
+// Profile
+export const getProfile = () => springApi.get('/users/profile');
+
+// Stores & Products
 export const getStores = () => springApi.get('/stores');
 export const getProducts = (storeId) => springApi.get(`/stores/${storeId}/products`);
+
+// Orders
 export const placeOrder = (data) => springApi.post('/orders', data);
 export const getOrders = () => springApi.get('/orders/my');
-export const getMessages = (orderId) => phpApi.get(`/chat/${orderId}`);
-export const sendMessage = (data) => phpApi.post('/chat', data);
+
+// Chat - Spring Boot
+export const getMessages = (userId) => springApi.get(`/chat/${userId}`);
+export const sendMessage = (data) => springApi.post('/chat', data);
+
+// Feedback & Ratings - PHP
 export const submitFeedback = (data) => phpApi.post('/feedback', data);
 export const submitRating = (data) => phpApi.post('/ratings', data);
 export const getStoreRatings = (storeId) => phpApi.get(`/ratings/store/${storeId}`);
 export const getOrderFeedback = (orderId) => phpApi.get(`/feedback/order/${orderId}`);
 
-export { djangoApi, springApi, phpApi };
-export default djangoApi;
+// Notifications - Django
+export const getNotifications = (userId) => djangoApi.get(`/notifications/?user_id=${userId}`);
+export const createNotification = (data) => djangoApi.post('/notifications/create/', data);
+export const markNotificationRead = (id) => djangoApi.patch(`/notifications/${id}/read/`);
+export const markAllNotificationsRead = (userId) => djangoApi.patch('/notifications/read-all/', { user_id: userId });
+export const getUnreadCount = (userId) => djangoApi.get(`/notifications/unread-count/?user_id=${userId}`);
+
+export { springApi, phpApi, djangoApi };
+export default springApi;

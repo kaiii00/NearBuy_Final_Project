@@ -10,6 +10,7 @@ import ChatPage from './pages/ChatPage';
 import AdminDashboard from './pages/AdminDashboard';
 import Ratings from './pages/Ratings';
 import Feedback from './pages/Feedback';
+import ProfilePage from './pages/ProfilePage';
 
 function App() {
   return (
@@ -25,6 +26,7 @@ function App() {
       <Route path="/admin/dashboard" element={<AdminDashboard />} />
       <Route path="/buyer/ratings" element={<Ratings />} />
       <Route path="/buyer/feedback" element={<Feedback />} />
+      <Route path="/profile" element={<ProfilePage />} />
     </Routes>
   );
 }

@@ -14,12 +14,23 @@ const ProductListingPage = () => {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [categories, setCategories] = useState(['All']);
 
-  // eslint-disable-next-line
   useEffect(() => {
+    // Load existing cart from localStorage (same store only)
+    const savedCart = JSON.parse(localStorage.getItem('cart') || '[]');
+    const savedStoreId = localStorage.getItem('storeId');
+    if (savedStoreId === storeId) setCart(savedCart);
+
     fetchStore();
     fetchProducts();
-    fetchCategories();
   }, [storeId]);
+
+  // Save cart to localStorage whenever it changes
+  useEffect(() => {
+    if (cart.length > 0) {
+      localStorage.setItem('cart', JSON.stringify(cart));
+      localStorage.setItem('storeId', storeId);
+    }
+  }, [cart, storeId]);
 
   const fetchStore = async () => {
     try {
@@ -34,6 +45,8 @@ const ProductListingPage = () => {
     try {
       const res = await getProducts(storeId);
       setProducts(res.data);
+      const unique = [...new Set(res.data.map(p => p.category).filter(Boolean))];
+      setCategories(['All', ...unique]);
     } catch (err) {
       console.error('Failed to load products', err);
     } finally {
@@ -41,23 +54,10 @@ const ProductListingPage = () => {
     }
   };
 
-  const fetchCategories = async () => {
-    try {
-      const res = await springApi.get(`/stores/${storeId}/products/categories`);
-      setCategories(['All', ...res.data]);
-    } catch (err) {
-      console.error('Failed to load categories', err);
-    }
-  };
-
   const addToCart = (product) => {
     const existing = cart.find(item => item.id === product.id);
     if (existing) {
-      setCart(cart.map(item =>
-        item.id === product.id
-          ? { ...item, quantity: item.quantity + 1 }
-          : item
-      ));
+      setCart(cart.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item));
     } else {
       setCart([...cart, { ...product, quantity: 1 }]);
     }
@@ -68,18 +68,11 @@ const ProductListingPage = () => {
     if (existing?.quantity === 1) {
       setCart(cart.filter(item => item.id !== productId));
     } else {
-      setCart(cart.map(item =>
-        item.id === productId
-          ? { ...item, quantity: item.quantity - 1 }
-          : item
-      ));
+      setCart(cart.map(item => item.id === productId ? { ...item, quantity: item.quantity - 1 } : item));
     }
   };
 
-  const getCartQuantity = (productId) => {
-    return cart.find(item => item.id === productId)?.quantity || 0;
-  };
-
+  const getCartQuantity = (productId) => cart.find(item => item.id === productId)?.quantity || 0;
   const getTotalItems = () => cart.reduce((sum, item) => sum + item.quantity, 0);
   const getTotalPrice = () => cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
@@ -95,203 +88,215 @@ const ProductListingPage = () => {
     navigate('/checkout');
   };
 
-  return (
-    <div style={styles.container}>
-      {/* Navbar */}
-      <div style={styles.navbar}>
-        <button style={styles.backBtn} onClick={() => {
-          const role = localStorage.getItem('role');
-          if (role === 'admin') navigate('/admin/dashboard');
-          else if (role === 'store_owner') navigate('/store/dashboard');
-          else navigate('/buyer/dashboard');
-        }}>
-        </button>
-        <h1 style={styles.logo}>🛒 NearBuy</h1>
-        <div style={styles.cartSummary}>
-          {getTotalItems() > 0 && (
-            <button style={styles.cartBtn} onClick={handleCheckout}>
-              🛒 {getTotalItems()} items — ₱{getTotalPrice().toFixed(2)}
-            </button>
-          )}
-        </div>
-      </div>
+  const handleBack = () => {
+    const role = localStorage.getItem('role');
+    if (role === 'admin') navigate('/admin/dashboard');
+    else if (role === 'store_owner') navigate('/store/dashboard');
+    else navigate('/buyer/dashboard');
+  };
 
-      {/* Store Header */}
+  return (
+    <div style={s.page}>
+      {/* Navbar */}
+      <nav style={s.navbar}>
+        <div style={s.navLeft}>
+          <button style={s.backBtn} onClick={handleBack}>← Back</button>
+          <div style={s.logoWrap}>
+            <div style={s.logoIcon}>🛒</div>
+            <span style={s.logoText}>NearBuy</span>
+          </div>
+        </div>
+        {getTotalItems() > 0 && (
+          <button style={s.cartBtn} onClick={handleCheckout}>
+            🛒 {getTotalItems()} items · ₱{getTotalPrice().toFixed(2)}
+          </button>
+        )}
+      </nav>
+
+      {/* Store Hero */}
       {store && (
-        <div style={styles.storeHeader}>
-          <h2 style={styles.storeName}>🏪 {store.name}</h2>
-          <p style={styles.storeAddress}>📍 {store.address}</p>
-          <p style={styles.storeDesc}>{store.description}</p>
+        <div style={s.storeHero}>
+          <div style={s.storeHeroInner}>
+            <div style={s.storeAvatar}>{store.name?.[0]?.toUpperCase()}</div>
+            <div>
+              <h1 style={s.storeName}>{store.name}</h1>
+              <p style={s.storeMeta}>
+                📍 {store.address}
+                {store.estimatedDeliveryMinutes && ` · ⏱ ${store.estimatedDeliveryMinutes} min delivery`}
+                {store.deliveryFee !== undefined && ` · 🚚 ₱${store.deliveryFee} delivery fee`}
+              </p>
+              {store.description && <p style={s.storeDesc}>{store.description}</p>}
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Search and Filter */}
-      <div style={styles.filterBar}>
-        <input
-          style={styles.searchInput}
-          type="text"
-          placeholder="🔍 Search products..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <div style={styles.categories}>
-          {categories.map(cat => (
-            <button
-              key={cat}
-              style={{
-                ...styles.categoryBtn,
-                ...(selectedCategory === cat ? styles.categoryBtnActive : {})
-              }}
-              onClick={() => setSelectedCategory(cat)}
-            >
-              {cat}
-            </button>
-          ))}
+      {/* Search + Filter */}
+      <div style={s.filterSection}>
+        <div style={s.filterInner}>
+          <div style={s.searchWrap}>
+            <span style={s.searchIcon}>🔍</span>
+            <input
+              style={s.searchInput}
+              type="text"
+              placeholder="Search products..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+            {search && <button style={s.clearBtn} onClick={() => setSearch('')}>✕</button>}
+          </div>
+          <div style={s.cats}>
+            {categories.map(cat => (
+              <button
+                key={cat}
+                style={{ ...s.catBtn, ...(selectedCategory === cat ? s.catBtnActive : {}) }}
+                onClick={() => setSelectedCategory(cat)}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
       {/* Products */}
-      <div style={styles.main}>
-        {loading && <div style={styles.loading}>Loading products...</div>}
-
-        {!loading && filteredProducts.length === 0 && (
-          <div style={styles.empty}>
-            <div style={styles.emptyIcon}>📦</div>
-            <p style={styles.emptyText}>No products found.</p>
+      <div style={s.main}>
+        {loading && (
+          <div style={s.loadingWrap}>
+            <div style={s.spinner}></div>
+            <p style={s.loadingText}>Loading products...</p>
           </div>
         )}
 
-        <div style={styles.grid}>
-          {filteredProducts.map(product => (
-            <div key={product.id} style={styles.productCard}>
-              <div style={styles.productIcon}>🛍️</div>
-              <h3 style={styles.productName}>{product.name}</h3>
-              <p style={styles.productCategory}>🏷️ {product.category}</p>
-              <p style={styles.productDesc}>{product.description}</p>
-              <p style={styles.productPrice}>₱{product.price}</p>
-              <p style={styles.productStock}>Stock: {product.stock}</p>
+        {!loading && filteredProducts.length === 0 && (
+          <div style={s.empty}>
+            <div style={s.emptyIcon}>📦</div>
+            <p style={s.emptyTitle}>No products found</p>
+            <p style={s.emptyText}>Try a different search or category</p>
+          </div>
+        )}
 
-              <div style={styles.cartControls}>
-                {getCartQuantity(product.id) === 0 ? (
-                  <button
-                    style={styles.addBtn}
-                    onClick={() => addToCart(product)}
-                  >
-                    Add to Cart
-                  </button>
-                ) : (
-                  <div style={styles.quantityControls}>
-                    <button
-                      style={styles.qtyBtn}
-                      onClick={() => removeFromCart(product.id)}
-                    >
-                      -
-                    </button>
-                    <span style={styles.qty}>{getCartQuantity(product.id)}</span>
-                    <button
-                      style={styles.qtyBtn}
-                      onClick={() => addToCart(product)}
-                    >
-                      +
-                    </button>
+        {!loading && filteredProducts.length > 0 && (
+          <>
+            <p style={s.resultsLabel}>{filteredProducts.length} product{filteredProducts.length !== 1 ? 's' : ''}</p>
+            <div style={s.grid}>
+              {filteredProducts.map(product => {
+                const qty = getCartQuantity(product.id);
+                const outOfStock = product.stock === 0;
+                return (
+                  <div key={product.id} style={{ ...s.card, ...(outOfStock ? s.cardDisabled : {}) }}>
+                    {product.imageUrl ? (
+                      <img src={product.imageUrl} alt={product.name} style={s.cardImg} />
+                    ) : (
+                      <div style={s.cardImgPlaceholder}>🛍️</div>
+                    )}
+                    {outOfStock && <div style={s.outOfStockBadge}>Out of Stock</div>}
+                    <div style={s.cardBody}>
+                      <p style={s.cardCategory}>{product.category}</p>
+                      <h3 style={s.cardName}>{product.name}</h3>
+                      {product.description && <p style={s.cardDesc}>{product.description}</p>}
+                      <div style={s.cardFooter}>
+                        <span style={s.cardPrice}>₱{product.price}</span>
+                        {!outOfStock && (
+                          qty === 0 ? (
+                            <button style={s.addBtn} onClick={() => addToCart(product)}>Add</button>
+                          ) : (
+                            <div style={s.qtyRow}>
+                              <button style={s.qtyBtn} onClick={() => removeFromCart(product.id)}>−</button>
+                              <span style={s.qtyNum}>{qty}</span>
+                              <button style={s.qtyBtn} onClick={() => addToCart(product)}>+</button>
+                            </div>
+                          )
+                        )}
+                      </div>
+                    </div>
                   </div>
-                )}
-              </div>
+                );
+              })}
             </div>
-          ))}
-        </div>
+          </>
+        )}
       </div>
 
-      {/* Floating Checkout Button */}
+      {/* Floating Checkout */}
       {getTotalItems() > 0 && (
-        <div style={styles.floatingCheckout}>
-          <button style={styles.checkoutBtn} onClick={handleCheckout}>
-            Proceed to Checkout ({getTotalItems()} items) — ₱{getTotalPrice().toFixed(2)}
-          </button>
+        <div style={s.floatingBar}>
+          <div style={s.floatingInner}>
+            <div>
+              <p style={s.floatingTitle}>Your cart</p>
+              <p style={s.floatingMeta}>{getTotalItems()} items · ₱{getTotalPrice().toFixed(2)}</p>
+            </div>
+            <button style={s.checkoutBtn} onClick={handleCheckout}>
+              Checkout →
+            </button>
+          </div>
         </div>
       )}
+
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+      `}</style>
     </div>
   );
 };
 
-const styles = {
-  container: { minHeight: '100vh', backgroundColor: '#0f0f0f', color: '#fff', paddingBottom: '80px' },
-  navbar: {
-    backgroundColor: '#1a1a1a', padding: '16px 32px',
-    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    boxShadow: '0 2px 10px rgba(0,0,0,0.5)',
-  },
-  backBtn: {
-    backgroundColor: 'transparent', color: '#4CAF50',
-    border: '1px solid #4CAF50', padding: '8px 16px',
-    borderRadius: '8px', cursor: 'pointer', fontSize: '14px',
-  },
-  logo: { fontSize: '24px', color: '#4CAF50', margin: 0 },
-  cartSummary: { minWidth: '200px', display: 'flex', justifyContent: 'flex-end' },
-  cartBtn: {
-    backgroundColor: '#4CAF50', color: '#fff', border: 'none',
-    padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontSize: '14px',
-  },
-  storeHeader: {
-    backgroundColor: '#1a1a1a', padding: '24px 32px',
-    borderBottom: '1px solid #333',
-  },
-  storeName: { fontSize: '24px', color: '#fff', marginBottom: '4px' },
-  storeAddress: { color: '#888', fontSize: '14px', marginBottom: '4px' },
-  storeDesc: { color: '#aaa', fontSize: '14px' },
-  filterBar: { padding: '16px 32px', backgroundColor: '#111', borderBottom: '1px solid #333' },
-  searchInput: {
-    width: '100%', padding: '12px 16px', borderRadius: '8px',
-    border: '1px solid #333', backgroundColor: '#1a1a1a',
-    color: '#fff', fontSize: '14px', boxSizing: 'border-box', marginBottom: '12px',
-  },
-  categories: { display: 'flex', gap: '8px', flexWrap: 'wrap' },
-  categoryBtn: {
-    backgroundColor: '#252525', color: '#aaa', border: '1px solid #333',
-    padding: '6px 14px', borderRadius: '20px', cursor: 'pointer', fontSize: '13px',
-  },
-  categoryBtnActive: { backgroundColor: '#1a2e1a', color: '#4CAF50', border: '1px solid #4CAF50' },
-  main: { padding: '32px', maxWidth: '1200px', margin: '0 auto' },
-  loading: { textAlign: 'center', color: '#888', padding: '40px' },
-  empty: { textAlign: 'center', padding: '60px' },
-  emptyIcon: { fontSize: '64px' },
-  emptyText: { color: '#888', fontSize: '18px', marginTop: '16px' },
-  grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '24px' },
-  productCard: {
-    backgroundColor: '#1a1a1a', borderRadius: '16px',
-    padding: '24px', border: '1px solid #333',
-  },
-  productIcon: { fontSize: '48px', marginBottom: '12px' },
-  productName: { fontSize: '18px', color: '#fff', marginBottom: '4px' },
-  productCategory: { color: '#888', fontSize: '13px', marginBottom: '4px' },
-  productDesc: { color: '#aaa', fontSize: '13px', marginBottom: '8px' },
-  productPrice: { color: '#4CAF50', fontSize: '20px', fontWeight: 'bold', marginBottom: '4px' },
-  productStock: { color: '#888', fontSize: '12px', marginBottom: '16px' },
-  cartControls: { marginTop: '8px' },
-  addBtn: {
-    backgroundColor: '#4CAF50', color: '#fff', border: 'none',
-    padding: '10px', borderRadius: '8px', cursor: 'pointer',
-    fontSize: '14px', width: '100%',
-  },
-  quantityControls: {
-    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px',
-  },
-  qtyBtn: {
-    backgroundColor: '#333', color: '#fff', border: 'none',
-    width: '36px', height: '36px', borderRadius: '8px',
-    cursor: 'pointer', fontSize: '18px',
-  },
-  qty: { fontSize: '18px', fontWeight: 'bold', minWidth: '30px', textAlign: 'center' },
-  floatingCheckout: {
-    position: 'fixed', bottom: 0, left: 0, right: 0,
-    padding: '16px 32px', backgroundColor: '#1a1a1a',
-    borderTop: '1px solid #333',
-  },
-  checkoutBtn: {
-    width: '100%', padding: '14px', backgroundColor: '#4CAF50',
-    color: '#fff', border: 'none', borderRadius: '8px',
-    cursor: 'pointer', fontSize: '16px', fontWeight: 'bold',
-  },
+const GREEN = '#059669';
+const GREEN_LIGHT = '#d1fae5';
+
+const s = {
+  page: { minHeight: '100vh', backgroundColor: '#f9fafb', color: '#111827', fontFamily: "'Inter', -apple-system, sans-serif", paddingBottom: '100px' },
+  navbar: { backgroundColor: '#fff', borderBottom: '1px solid #e5e7eb', padding: '0 32px', height: '64px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' },
+  navLeft: { display: 'flex', alignItems: 'center', gap: '20px' },
+  backBtn: { backgroundColor: 'transparent', color: '#6b7280', border: '1px solid #e5e7eb', padding: '7px 14px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '500' },
+  logoWrap: { display: 'flex', alignItems: 'center', gap: '8px' },
+  logoIcon: { fontSize: '20px' },
+  logoText: { fontSize: '18px', fontWeight: '700', color: GREEN },
+  cartBtn: { backgroundColor: GREEN, color: '#fff', border: 'none', padding: '9px 18px', borderRadius: '10px', cursor: 'pointer', fontSize: '14px', fontWeight: '600', boxShadow: '0 2px 8px rgba(5,150,105,0.3)' },
+  storeHero: { backgroundColor: '#fff', borderBottom: '1px solid #e5e7eb', padding: '28px 32px' },
+  storeHeroInner: { maxWidth: '1200px', margin: '0 auto', display: 'flex', alignItems: 'center', gap: '20px' },
+  storeAvatar: { width: '64px', height: '64px', borderRadius: '16px', backgroundColor: GREEN_LIGHT, color: GREEN, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', fontWeight: '700', flexShrink: 0 },
+  storeName: { fontSize: '24px', fontWeight: '700', color: '#111827', margin: '0 0 6px' },
+  storeMeta: { fontSize: '13px', color: '#6b7280', margin: '0 0 4px' },
+  storeDesc: { fontSize: '14px', color: '#374151', margin: 0 },
+  filterSection: { backgroundColor: '#fff', borderBottom: '1px solid #e5e7eb', padding: '16px 32px' },
+  filterInner: { maxWidth: '1200px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '12px' },
+  searchWrap: { display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#f3f4f6', borderRadius: '10px', padding: '10px 16px', border: '1px solid #e5e7eb' },
+  searchIcon: { fontSize: '16px', flexShrink: 0 },
+  searchInput: { flex: 1, background: 'none', border: 'none', outline: 'none', color: '#111827', fontSize: '14px' },
+  clearBtn: { background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '14px' },
+  cats: { display: 'flex', gap: '8px', flexWrap: 'wrap' },
+  catBtn: { backgroundColor: '#f3f4f6', color: '#6b7280', border: '1px solid #e5e7eb', padding: '6px 14px', borderRadius: '20px', cursor: 'pointer', fontSize: '13px', fontWeight: '500' },
+  catBtnActive: { backgroundColor: GREEN_LIGHT, color: GREEN, border: `1px solid ${GREEN}` },
+  main: { maxWidth: '1200px', margin: '0 auto', padding: '28px 32px' },
+  resultsLabel: { fontSize: '13px', color: '#9ca3af', marginBottom: '20px' },
+  loadingWrap: { display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '80px', gap: '16px' },
+  spinner: { width: '32px', height: '32px', border: '3px solid #e5e7eb', borderTop: `3px solid ${GREEN}`, borderRadius: '50%', animation: 'spin 0.8s linear infinite' },
+  loadingText: { color: '#9ca3af', fontSize: '14px' },
+  empty: { textAlign: 'center', padding: '80px 20px' },
+  emptyIcon: { fontSize: '56px', marginBottom: '16px' },
+  emptyTitle: { fontSize: '18px', fontWeight: '600', color: '#374151', marginBottom: '6px' },
+  emptyText: { color: '#9ca3af', fontSize: '14px' },
+  grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '20px' },
+  card: { backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e5e7eb', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', transition: 'box-shadow 0.2s', position: 'relative' },
+  cardDisabled: { opacity: 0.6 },
+  cardImg: { width: '100%', height: '180px', objectFit: 'cover' },
+  cardImgPlaceholder: { width: '100%', height: '180px', backgroundColor: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '40px' },
+  outOfStockBadge: { position: 'absolute', top: '12px', left: '12px', backgroundColor: '#fee2e2', color: '#dc2626', fontSize: '11px', fontWeight: '600', padding: '3px 10px', borderRadius: '20px' },
+  cardBody: { padding: '14px 16px' },
+  cardCategory: { fontSize: '11px', fontWeight: '600', color: GREEN, textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 4px' },
+  cardName: { fontSize: '15px', fontWeight: '600', color: '#111827', margin: '0 0 6px' },
+  cardDesc: { fontSize: '12px', color: '#9ca3af', margin: '0 0 12px', lineHeight: '1.5' },
+  cardFooter: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
+  cardPrice: { fontSize: '18px', fontWeight: '700', color: '#111827' },
+  addBtn: { backgroundColor: GREEN, color: '#fff', border: 'none', padding: '7px 16px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' },
+  qtyRow: { display: 'flex', alignItems: 'center', gap: '8px' },
+  qtyBtn: { width: '30px', height: '30px', borderRadius: '8px', backgroundColor: GREEN_LIGHT, color: GREEN, border: 'none', cursor: 'pointer', fontSize: '16px', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  qtyNum: { fontSize: '15px', fontWeight: '700', color: '#111827', minWidth: '20px', textAlign: 'center' },
+  floatingBar: { position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: '#fff', borderTop: '1px solid #e5e7eb', padding: '16px 32px', boxShadow: '0 -4px 20px rgba(0,0,0,0.08)' },
+  floatingInner: { maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
+  floatingTitle: { fontSize: '14px', fontWeight: '600', color: '#111827', margin: 0 },
+  floatingMeta: { fontSize: '13px', color: '#6b7280', margin: '2px 0 0' },
+  checkoutBtn: { backgroundColor: GREEN, color: '#fff', border: 'none', padding: '12px 28px', borderRadius: '10px', cursor: 'pointer', fontSize: '15px', fontWeight: '600', boxShadow: '0 2px 8px rgba(5,150,105,0.3)' },
 };
 
 export default ProductListingPage;
