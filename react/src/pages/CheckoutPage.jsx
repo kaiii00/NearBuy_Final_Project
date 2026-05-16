@@ -33,7 +33,7 @@ const CheckoutPage = () => {
         storeId: parseInt(storeId),
         deliveryAddress: deliveryInfo.address,
         contactNumber: deliveryInfo.contact,
-        notes: deliveryInfo.notes,
+        deliveryNotes: deliveryInfo.notes,
         items: cart.map(item => ({ productId: item.id, quantity: item.quantity })),
       };
       const res = await placeOrder(orderData);

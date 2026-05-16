@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { submitFeedback, getOrderFeedback } from '../services/api';
 import { springApi } from '../services/api';
 
-const Feedback = () => {
+const Feedback = ({ embedded = false }) => {
   const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -80,16 +80,16 @@ const Feedback = () => {
   };
 
   return (
-    <div style={styles.container}>
-      {/* Navbar */}
-      <div style={styles.navbar}>
-        <h1 style={styles.logo}>🛒 NearBuy</h1>
-        <button style={styles.backBtn} onClick={() => navigate('/buyer/dashboard')}>
-          ← Back to Dashboard
-        </button>
-      </div>
-
-      <div style={styles.main}>
+    <div style={embedded ? {} : styles.container}>
+      {!embedded && (
+        <div style={styles.navbar}>
+          <h1 style={styles.logo}>🛒 NearBuy</h1>
+          <button style={styles.backBtn} onClick={() => navigate('/buyer/dashboard')}>
+            ← Back to Dashboard
+          </button>
+        </div>
+      )}
+      <div style={embedded ? { padding: '0' } : styles.main}>
         <h2 style={styles.title}>💬 Leave Feedback</h2>
         <p style={styles.subtitle}>Only delivered orders can receive feedback</p>
 

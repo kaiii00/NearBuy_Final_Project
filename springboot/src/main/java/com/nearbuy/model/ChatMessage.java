@@ -25,6 +25,12 @@ public class ChatMessage {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String message;
 
+    @Column
+    private String mediaUrl;
+
+    @Column(length = 50)
+    private String mediaType;
+    
     @Column(nullable = false)
     private LocalDateTime createdAt;
 

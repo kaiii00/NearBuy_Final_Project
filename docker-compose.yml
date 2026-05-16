@@ -56,6 +56,8 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres_db:5432/nearbuy
       - SPRING_DATASOURCE_USERNAME=admin
       - SPRING_DATASOURCE_PASSWORD=admin123
+    volumes:
+      - uploads_data:/app/uploads
     depends_on:
       postgres_db:
         condition: service_healthy
@@ -71,3 +73,4 @@ services:
 
 volumes:
   postgres_data:
+  uploads_data:

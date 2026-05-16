@@ -1,0 +1,3 @@
+ALTER TABLE messages
+ADD COLUMN media_url VARCHAR(500),
+ADD COLUMN media_type VARCHAR(50);

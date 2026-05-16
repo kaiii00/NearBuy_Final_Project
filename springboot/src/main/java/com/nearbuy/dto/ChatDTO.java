@@ -5,10 +5,12 @@ import java.time.LocalDateTime;
 
 public class ChatDTO {
 
-    @Data
+  @Data
     public static class SendMessage {
         private Long receiverId;
         private String message;
+        private String mediaUrl;
+        private String mediaType;
     }
 
     @Data
@@ -21,6 +23,8 @@ public class ChatDTO {
         private String senderUsername;
         private Long receiverId;
         private String message;
+        private String mediaUrl;
+        private String mediaType;
         private LocalDateTime createdAt;
     }
 }

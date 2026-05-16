@@ -1,7 +1,8 @@
 <?php
-// Chat has been moved to Spring Boot WebSocket (/ws/chat)
-// This PHP service will handle content APIs (products, orders, categories, delivery)
-// coming soon.
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(204);
+    exit;
+}
 
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $method = $_SERVER['REQUEST_METHOD'];

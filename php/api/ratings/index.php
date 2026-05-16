@@ -37,8 +37,8 @@ if ($method === 'POST' && $uri === '/api/ratings') {
         DO UPDATE SET rating = EXCLUDED.rating, comment = EXCLUDED.comment, created_at = NOW()
         RETURNING id, user_id, store_id, rating, comment, created_at
     ');
-    $stmt->execute([$userId, $storeId, (int)$rating, $comment ?: null]);
-    $result = $stmt->fetch();
+   $stmt->execute([$userId, $storeId, (int)$rating, $comment ?: null]);
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
     http_response_code(201);
     echo json_encode($result);
@@ -50,13 +50,13 @@ if ($method === 'GET' && preg_match('#^/api/ratings/store/(\d+)$#', $uri, $match
     $storeId = (int) $matches[1];
 
     $stmt = $pdo->prepare('
-        SELECT id, user_id, store_id, rating, comment, created_at
+        SELECT id, user_id, store_id, rating, comment, created_at, reply, replied_at
         FROM ratings
         WHERE store_id = ?
         ORDER BY created_at DESC
     ');
     $stmt->execute([$storeId]);
-    $ratings = $stmt->fetchAll();
+    $ratings = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Calculate average
     $avg = count($ratings) > 0
@@ -85,6 +85,32 @@ if ($method === 'GET' && $uri === '/api/ratings/my') {
     ');
     $stmt->execute([$userId]);
     echo json_encode($stmt->fetchAll());
+    exit;
+}
+
+// PATCH /api/ratings/{id}/reply — store owner replies to a rating
+if ($method === 'PATCH' && preg_match('#^/api/ratings/(\d+)/reply$#', $uri, $matches)) {
+    $user = getAuthUser();
+    $ratingId = (int) $matches[1];
+
+    $body = json_decode(file_get_contents('php://input'), true);
+    $reply = trim($body['reply'] ?? '');
+
+    if (!$reply) {
+        http_response_code(400);
+        echo json_encode(['error' => 'reply is required']);
+        exit;
+    }
+
+    $stmt = $pdo->prepare('
+        UPDATE ratings SET reply = ?, replied_at = NOW()
+        WHERE id = ?
+        RETURNING id, user_id, store_id, rating, comment, created_at, reply, replied_at
+    ');
+    $stmt->execute([$reply, $ratingId]);
+    $result = $stmt->fetch();
+
+echo json_encode($result);
     exit;
 }
 

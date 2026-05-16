@@ -30,6 +30,8 @@ public class User {
 
     private String address;
     private String contact;
+    private String profilePhoto;
+    private String displayName;
 
     public enum Role {
         buyer, store_owner, admin, driver

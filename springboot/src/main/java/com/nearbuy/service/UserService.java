@@ -27,7 +27,6 @@ public class UserService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
 
         if (request.getEmail() != null && !request.getEmail().isBlank()) {
-            // Check if email is taken by another user
             userRepository.findByEmail(request.getEmail()).ifPresent(existing -> {
                 if (!existing.getId().equals(userId)) {
                     throw new BadRequestException("Email is already in use");
@@ -38,8 +37,8 @@ public class UserService {
 
         if (request.getAddress() != null) user.setAddress(request.getAddress());
         if (request.getContact() != null) user.setContact(request.getContact());
+        if (request.getDisplayName() != null) user.setDisplayName(request.getDisplayName());
 
-        // Handle password change
         if (request.getNewPassword() != null && !request.getNewPassword().isBlank()) {
             if (request.getCurrentPassword() == null || request.getCurrentPassword().isBlank()) {
                 throw new BadRequestException("Current password is required to change password");
@@ -54,5 +53,12 @@ public class UserService {
         }
 
         return UserDTO.ProfileResponse.from(userRepository.save(user));
+    }
+
+    public void updateProfilePhoto(Long userId, String photoUrl) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
+        user.setProfilePhoto(photoUrl);
+        userRepository.save(user);
     }
 }

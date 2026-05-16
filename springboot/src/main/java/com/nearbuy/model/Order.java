@@ -62,6 +62,9 @@ public class Order {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    @Column(name = "contact_number")
+    private String contactNumber;
+
     public enum OrderStatus {
         PENDING,          // Just placed
         CONFIRMED,        // Store accepted

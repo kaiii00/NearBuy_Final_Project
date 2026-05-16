@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getStores, getOrders, placeOrder, getNotifications, markNotificationRead, markAllNotificationsRead } from '../services/api';
+import { getStores, getOrders, placeOrder, cancelOrder, getNotifications, markNotificationRead, markAllNotificationsRead, getMessages, springApi } from '../services/api';
 import OrderReceiptModal from '../components/OrderReceiptModal';
+import Feedback from './Feedback';
 
 const BuyerDashboard = () => {
   const navigate = useNavigate();
@@ -22,10 +23,61 @@ const BuyerDashboard = () => {
   const notifRef = useRef(null);
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const unreadCount = notifications.filter(n => !n.is_read).length;
+  const [unreadChats, setUnreadChats] = useState(0);
+  const [unreadFromId, setUnreadFromId] = useState(null);
+  const [conversations, setConversations] = useState([]);
 
+    const checkUnreadMessages = useCallback(async () => {
+      try {
+        const storesRes = await getStores();
+        let totalUnread = 0;
+        let firstUnreadId = null;
+        for (const store of storesRes.data) {
+          const ownerId = store.ownerId;
+          if (!ownerId) continue;
+          const res = await getMessages(ownerId);
+          const msgs = res.data || [];
+          const lastSeenKey = `chat_seen_${user.id}_${ownerId}`;
+          const lastSeen = localStorage.getItem(lastSeenKey);
+          const unread = msgs.filter(m =>
+            m.senderId !== user.id &&
+            (!lastSeen || new Date(m.createdAt) > new Date(lastSeen))
+          );
+          if (unread.length > 0 && !firstUnreadId) firstUnreadId = ownerId;
+          totalUnread += unread.length;
+        }
+        setUnreadChats(totalUnread);
+        setUnreadFromId(firstUnreadId);
+      } catch (err) {
+        console.error('Failed to check unread messages', err);
+      }
+   }, [user.id]);
+
+  const unreadCount = notifications.filter(n => !n.is_read).length;
+  const fetchConversations = useCallback(async () => {
+      try {
+        const storesRes = await getStores();
+        const convos = [];
+        for (const store of storesRes.data) {
+          const ownerId = store.ownerId;
+          if (!ownerId) continue;
+          const res = await getMessages(ownerId);
+          const msgs = res.data || [];
+          if (msgs.length === 0) continue;
+          const lastMsg = msgs[msgs.length - 1];
+          const lastSeenKey = `chat_seen_${user.id}_${ownerId}`;
+          const lastSeen = localStorage.getItem(lastSeenKey);
+          const unread = msgs.filter(m =>
+            Number(m.senderId) !== Number(user.id) &&
+            (!lastSeen || new Date(m.createdAt) > new Date(lastSeen))
+          ).length;
+          convos.push({ ownerId, storeName: store.name, lastMsg, unread });
+        }
+        setConversations(convos);
+      } catch (err) { console.error('Failed to fetch conversations', err); }
+    }, [user.id]);
   const STATUS_STEPS = [
-    { key: 'PENDING',          label: 'Order Placed', emoji: '📋' },
+    { key: 'PENDING',          label: 'Order Placed', emoji: '📋' },    
     { key: 'CONFIRMED',        label: 'Confirmed',    emoji: '✅' },
     { key: 'PREPARING',        label: 'Preparing',    emoji: '👨‍🍳' },
     { key: 'OUT_FOR_DELIVERY', label: 'On the Way',   emoji: '🛵' },
@@ -36,7 +88,21 @@ const BuyerDashboard = () => {
     if (!user.id) return;
     try { const res = await getNotifications(user.id); setNotifications(res.data); }
     catch (err) { console.error('Failed to load notifications', err); }
-  }, [user.id]);
+    }, [user.id]);
+    
+    const [profilePhoto, setProfilePhoto] = useState(null);
+    const [displayName, setDisplayName] = useState(user.username);
+
+    useEffect(() => {
+      const fetchProfile = async () => {
+        try {
+          const res = await springApi.get('/users/profile');
+          if (res.data.profilePhoto) setProfilePhoto(`http://localhost:8080${res.data.profilePhoto}`);
+          if (res.data.displayName) setDisplayName(res.data.displayName);
+        } catch (err) {}
+      };
+      fetchProfile();
+    }, []);
 
   const fetchData = useCallback(async (silent = false) => {
     try {
@@ -49,7 +115,7 @@ const BuyerDashboard = () => {
     finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { fetchData(); fetchNotifications(); }, [fetchData, fetchNotifications]);
+  useEffect(() => { fetchData(); fetchNotifications(); fetchConversations(); }, [fetchData, fetchNotifications, fetchConversations]);
 
   useEffect(() => {
     if (activeTab !== 'orders') return;
@@ -61,6 +127,12 @@ const BuyerDashboard = () => {
     const interval = setInterval(() => fetchNotifications(), 30000);
     return () => clearInterval(interval);
   }, [fetchNotifications]);
+
+  useEffect(() => {
+    checkUnreadMessages();
+    const interval = setInterval(checkUnreadMessages, 15000);
+    return () => clearInterval(interval);
+  }, [checkUnreadMessages]);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -117,6 +189,16 @@ const BuyerDashboard = () => {
     } catch (err) { console.error('Reorder failed', err); }
     finally { setReordering(null); }
   };
+  const handleCancel = async (orderId) => {
+    if (!window.confirm('Cancel this order?')) return;
+    try {
+        await cancelOrder(orderId);
+        fetchData(true);
+    } catch (err) {
+        alert('Failed to cancel order.');
+        console.error(err);
+    }
+};
 
   const activeOrders = orders.filter(o => o.status !== 'DELIVERED' && o.status !== 'CANCELLED');
   const pastOrders   = orders.filter(o => o.status === 'DELIVERED' || o.status === 'CANCELLED');
@@ -130,14 +212,21 @@ const BuyerDashboard = () => {
           <span style={styles.navBrand}>NearBuy</span>
         </div>
 
-        <div style={styles.navTabs}>
+       <div style={styles.navTabs}>
           <button style={{ ...styles.navTab, ...(activeTab === 'stores' ? styles.navTabActive : {}) }} onClick={() => setActiveTab('stores')}>
             ▦ Stores
           </button>
           <button style={{ ...styles.navTab, ...(activeTab === 'orders' ? styles.navTabActive : {}) }} onClick={() => setActiveTab('orders')}>
-            ◫ My Orders
-            {activeOrders.length > 0 && <span style={styles.badge}>{activeOrders.length}</span>}
-          </button>
+          ◫ My Orders
+          {activeOrders.length > 0 && <span style={styles.badge}>{activeOrders.length}</span>}
+        </button>
+        <button style={{ ...styles.navTab, ...(activeTab === 'chats' ? styles.navTabActive : {}) }} onClick={() => { setActiveTab('chats'); setUnreadChats(0); setUnreadFromId(null); fetchConversations(); }}>
+          💬 Chats
+          {unreadChats > 0 && <span style={styles.badge}>{unreadChats > 9 ? '9+' : unreadChats}</span>}
+        </button>
+        <button style={{ ...styles.navTab, ...(activeTab === 'feedback' ? styles.navTabActive : {}) }} onClick={() => setActiveTab('feedback')}>
+          📝 Feedback
+        </button>
         </div>
 
         <div style={styles.navRight}>
@@ -194,15 +283,19 @@ const BuyerDashboard = () => {
           </button>
 
           <button style={styles.iconBtn} onClick={() => navigate('/buyer/ratings')} title="Ratings">⭐</button>
-          <button style={styles.iconBtn} onClick={() => navigate('/buyer/feedback')} title="Feedback">💬</button>
+          
 
           <div style={styles.navDivider} />
 
           <button style={styles.profileChip} onClick={() => navigate('/profile')} title="Edit Profile">
-            <div style={styles.profileAvatar}>{user.username?.[0]?.toUpperCase() || 'U'}</div>
-            <span style={styles.profileName}>{user.username}</span>
+            {profilePhoto ? (
+              <img src={profilePhoto} alt="profile" style={{ width: '26px', height: '26px', borderRadius: '50%', objectFit: 'cover' }} />
+            ) : (
+              <div style={styles.profileAvatar}>{user.username?.[0]?.toUpperCase() || 'U'}</div>
+            )}
+            <span style={styles.profileName}>{displayName}</span>
           </button>
-
+          
           <button style={styles.logoutBtn} onClick={handleLogout}>Logout</button>
         </div>
       </nav>
@@ -257,7 +350,7 @@ const BuyerDashboard = () => {
                 {filteredStores.map((store, i) => (
                   <div key={store.id}
                     style={{ ...styles.storeCard, animationDelay: `${i * 40}ms`, borderColor: favorites.includes(store.id) ? '#ef444430' : '#1f1f24' }}
-                    onClick={() => navigate(`/products/${store.id}`)}>
+                    onClick={() => navigate(`/store/${store.id}`)}>
                     {/* Card top row */}
                     <div style={styles.storeCardTop}>
                       <div style={styles.storeAvatar}>🏪</div>
@@ -276,7 +369,7 @@ const BuyerDashboard = () => {
                     {store.description && <p style={styles.storeDesc}>{store.description}</p>}
 
                     <div style={styles.storeActions}>
-                      <button style={styles.shopBtn} onClick={(e) => { e.stopPropagation(); navigate(`/products/${store.id}`); }}>
+                      <button style={styles.shopBtn} onClick={(e) => { e.stopPropagation(); navigate(`/store/${store.id}`); }}>
                         Shop Now →
                       </button>
                       <button style={styles.storeIconBtn} onClick={(e) => { e.stopPropagation(); navigate(`/chat/${store.ownerId}`); }} title="Chat">
@@ -297,7 +390,51 @@ const BuyerDashboard = () => {
           </div>
         )}
 
-        {/* ORDERS TAB */}
+                {/* FEEDBACK TAB */}
+        {activeTab === 'feedback' && (
+          <div style={styles.tabContent}>
+            <Feedback embedded={true} />
+          </div>
+        )}
+          {activeTab === 'chats' && (
+            <div style={styles.tabContent}>
+              <div style={styles.pageHeader}>
+                <div>
+                  <h1 style={styles.pageTitle}>💬 Messages</h1>
+                  <p style={styles.pageSubtitle}>{conversations.length} conversation{conversations.length !== 1 ? 's' : ''}</p>
+                </div>
+              </div>
+              {conversations.length === 0 ? (
+                <div style={styles.centerState}>
+                  <div style={{ fontSize: '48px', marginBottom: '12px' }}>💬</div>
+                  <p style={styles.stateTitle}>No conversations yet</p>
+                  <p style={styles.stateText}>Chat with a store from the Stores tab!</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {conversations.map(convo => (
+                    <div key={convo.ownerId}
+                      onClick={() => navigate(`/chat/${convo.ownerId}`)}
+                      style={{ backgroundColor: '#111114', border: `1px solid ${convo.unread > 0 ? '#3b82f640' : '#1f1f24'}`, borderRadius: '14px', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px', cursor: 'pointer', transition: 'border-color 0.2s' }}>
+                      <div style={{ width: '44px', height: '44px', borderRadius: '12px', backgroundColor: '#1c1c22', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', flexShrink: 0 }}>🏪</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                          <p style={{ fontSize: '14px', fontWeight: '600', color: '#e4e4e7', margin: 0 }}>{convo.storeName}</p>
+                          <span style={{ fontSize: '11px', color: '#52525b' }}>{new Date(convo.lastMsg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+                        <p style={{ fontSize: '13px', color: '#71717a', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{convo.lastMsg.message}</p>
+                      </div>
+                      {convo.unread > 0 && (
+                        <span style={{ backgroundColor: '#3b82f6', color: '#fff', fontSize: '11px', fontWeight: '700', padding: '2px 7px', borderRadius: '999px', flexShrink: 0 }}>
+                          {convo.unread > 9 ? '9+' : convo.unread}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         {activeTab === 'orders' && (
           <div style={styles.tabContent}>
             <div style={styles.pageHeader}>
@@ -338,6 +475,7 @@ const BuyerDashboard = () => {
                           expanded={expandedOrder === order.id}
                           onToggle={() => setExpandedOrder(expandedOrder === order.id ? null : order.id)}
                           onReorder={handleReorder}
+                          onCancel={handleCancel}
                           reordering={reordering === order.id}
                           reorderSuccess={reorderSuccess === order.id}
                           getStatusColor={getStatusColor} getStatusEmoji={getStatusEmoji}
@@ -359,6 +497,7 @@ const BuyerDashboard = () => {
                           expanded={expandedOrder === order.id}
                           onToggle={() => setExpandedOrder(expandedOrder === order.id ? null : order.id)}
                           onReorder={handleReorder}
+                          onCancel={handleCancel}
                           reordering={reordering === order.id}
                           reorderSuccess={reorderSuccess === order.id}
                           getStatusColor={getStatusColor} getStatusEmoji={getStatusEmoji}
@@ -389,7 +528,7 @@ const BuyerDashboard = () => {
 };
 
 // ── Order Card ────────────────────────────────────────────────────────────────
-const OrderCard = ({ order, expanded, onToggle, onReorder, reordering, reorderSuccess, getStatusColor, getStatusEmoji, getStepIndex, STATUS_STEPS, navigate, onReceipt }) => {
+const OrderCard = ({ order, expanded, onToggle, onReorder, onCancel, reordering, reorderSuccess, getStatusColor, getStatusEmoji, getStepIndex, STATUS_STEPS, navigate, onReceipt }) => {
   const isCancelled = order.status === 'CANCELLED';
   const isDelivered = order.status === 'DELIVERED';
   const currentStep = getStepIndex(order.status);
@@ -458,8 +597,11 @@ const OrderCard = ({ order, expanded, onToggle, onReorder, reordering, reorderSu
 
           {/* Actions */}
           <div style={card.actions}>
-            <button style={card.chatBtn} onClick={() => navigate(`/chat/${order.storeOwnerId || order.storeId}`)}>💬 Chat with Store</button>
-            <button style={card.chatBtn} onClick={() => onReceipt(order)}>🧾 Receipt</button>
+              <button style={card.chatBtn} onClick={() => navigate(`/chat/${order.storeOwnerId || order.storeId}`)}>💬 Chat with Store</button>
+              <button style={card.chatBtn} onClick={() => onReceipt(order)}>🧾 Receipt</button>
+              {order.status === 'PENDING' && (
+                  <button style={card.cancelBtn} onClick={() => onCancel(order.id)}>❌ Cancel Order</button>
+              )}
             {isDelivered && (
               <>
                 <button style={card.rateBtn} onClick={() => navigate('/buyer/ratings')}>⭐ Rate</button>
@@ -503,9 +645,9 @@ const card = {
   chatBtn: { padding: '8px 14px', backgroundColor: '#131b2e', color: '#60a5fa', border: '1px solid #1e3056', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: '500', fontFamily: "'DM Sans', sans-serif" },
   rateBtn: { padding: '8px 14px', backgroundColor: '#1c1a10', color: '#f59e0b', border: '1px solid #2d2a18', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: '500', fontFamily: "'DM Sans', sans-serif" },
   feedbackBtn: { padding: '8px 14px', backgroundColor: '#1a1422', color: '#a78bfa', border: '1px solid #2a1e40', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: '500', fontFamily: "'DM Sans', sans-serif" },
-  reorderBtn: { padding: '8px 14px', border: '1px solid', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: '600', fontFamily: "'DM Sans', sans-serif", transition: 'all 0.25s' },
+ reorderBtn: { padding: '8px 14px', border: '1px solid', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: '600', fontFamily: "'DM Sans', sans-serif", transition: 'all 0.25s' },
+cancelBtn: { padding: '8px 14px', backgroundColor: '#2a1010', color: '#ef4444', border: '1px solid #ef444440', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: '500', fontFamily: "'DM Sans', sans-serif" },
 };
-
 // ── Dashboard Styles ──────────────────────────────────────────────────────────
 const styles = {
   root: { minHeight: '100vh', backgroundColor: '#090909', fontFamily: "'DM Sans', sans-serif", color: '#e4e4e7' },

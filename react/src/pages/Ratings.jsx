@@ -160,12 +160,18 @@ const Ratings = () => {
                 <div style={styles.ratingsList}>
                   {ratings.map((r, index) => (
                     <div key={index} style={styles.ratingItem}>
-                      <div style={styles.ratingStars}>{renderStars(r.rating)}</div>
-                      <p style={styles.ratingComment}>{r.comment || 'No comment'}</p>
-                      <p style={styles.ratingDate}>
-                        {new Date(r.created_at).toLocaleDateString()}
-                      </p>
-                    </div>
+                    <div style={styles.ratingStars}>{renderStars(r.rating)}</div>
+                    <p style={styles.ratingComment}>{r.comment || 'No comment'}</p>
+                    {r.reply && (
+                      <div style={{ backgroundColor: '#1e2a3b', borderLeft: '3px solid #3b82f6', padding: '10px 14px', borderRadius: '6px', marginTop: '8px' }}>
+                        <p style={{ fontSize: '11px', color: '#3b82f6', fontWeight: '600', margin: '0 0 4px' }}>Store Reply</p>
+                        <p style={{ fontSize: '13px', color: '#a1a1aa', margin: 0 }}>{r.reply}</p>
+                      </div>
+                    )}
+                    <p style={styles.ratingDate}>
+                      {new Date(r.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
                   ))}
                 </div>
               )}

@@ -6,7 +6,12 @@ RUN apt-get update && apt-get install -y libpq-dev \
 
 COPY . /var/www/html/
 
-RUN mv /var/www/html/init.sql /init.sql
+RUN mv /var/www/html/init.sql /init.sql \
+    && echo '<?php echo "PHP_WORKS";' > /var/www/html/test.php
+
+RUN echo 'ServerName localhost' >> /etc/apache2/apache2.conf \
+    && echo '<FilesMatch "\.php$">\n    SetHandler application/x-httpd-php\n</FilesMatch>' > /etc/apache2/mods-available/php.conf \
+    && ln -sf /etc/apache2/mods-available/php.conf /etc/apache2/mods-enabled/php.conf
 
 RUN echo '<VirtualHost *:80>\n\
     DocumentRoot /var/www/html\n\
@@ -14,9 +19,12 @@ RUN echo '<VirtualHost *:80>\n\
         Options -Indexes\n\
         AllowOverride All\n\
         Require all granted\n\
+        <FilesMatch "\.php$">\n\
+            SetHandler application/x-httpd-php\n\
+        </FilesMatch>\n\
     </Directory>\n\
-    Header always set Access-Control-Allow-Origin "*"\n\
-    Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"\n\
+    Header always set Access-Control-Allow-Origin "http://localhost:3000"\n\
+    Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, PATCH, OPTIONS"\n\
     Header always set Access-Control-Allow-Headers "Content-Type, Authorization"\n\
     RewriteEngine On\n\
     RewriteCond %{REQUEST_FILENAME} !-f\n\

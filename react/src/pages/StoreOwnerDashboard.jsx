@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { springApi, phpApi } from '../services/api';
+import { springApi, phpApi, replyToRating } from '../services/api';
 import OrderReceiptModal from '../components/OrderReceiptModal';
 
 // SVG Icons
@@ -220,7 +220,72 @@ const DonutChart = ({ data, size = 120 }) => {
   );
 };
 
-const StoreOwnerDashboard = () => {
+const ReplyBox = ({ ratingId, onReplied }) => {
+  const [text, setText] = React.useState('');
+  const [saving, setSaving] = React.useState(false);
+
+  const handleReply = async () => {
+    if (!text.trim()) return;
+    setSaving(true);
+    try {
+      await replyToRating(ratingId, text.trim());
+      onReplied();
+    } catch (err) {
+      console.error('Failed to reply', err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={{ marginTop: '10px', display: 'flex', gap: '8px' }}>
+      <input
+        value={text}
+        onChange={e => setText(e.target.value)}
+        placeholder="Write a reply..."
+        style={{ flex: 1, padding: '8px 12px', backgroundColor: '#1a1a1f', border: '1px solid #27272a', borderRadius: '8px', color: '#e4e4e7', fontSize: '13px', outline: 'none' }}
+      />
+      <button
+        onClick={handleReply}
+        disabled={saving || !text.trim()}
+        style={{ padding: '8px 14px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: '600', opacity: saving ? 0.6 : 1 }}>
+        {saving ? '...' : 'Reply'}
+      </button>
+    </div>
+  );
+};
+  const ConversationCard = ({ msg, otherId, otherName, onOpenChat, actionBtn, convAvatar, conversationCard }) => {
+  const [photo, setPhoto] = React.useState(null);
+  const [displayName, setDisplayName] = React.useState(otherName);
+
+  React.useEffect(() => {
+    const fetch = async () => {
+      try {
+        const res = await springApi.get(`/users/${otherId}/public`);
+        if (res.data.profilePhoto) setPhoto(`http://localhost:8080${res.data.profilePhoto}`);
+        if (res.data.displayName) setDisplayName(res.data.displayName);
+      } catch {}
+    };
+    fetch();
+  }, [otherId]);
+
+  return (
+    <div style={conversationCard}>
+      {photo
+        ? <img src={photo} alt="avatar" style={{ width: '42px', height: '42px', borderRadius: '10px', objectFit: 'cover', flexShrink: 0 }} />
+        : <div style={convAvatar}><UserIcon /></div>
+      }
+      <div style={{ flex: 1 }}>
+        <p style={{ color: '#e4e4e7', fontWeight: '600', fontSize: '14px', margin: 0 }}>{displayName}</p>
+        <p style={{ color: '#71717a', fontSize: '12px', margin: '3px 0 0' }}>{msg.message}</p>
+      </div>
+      <button style={actionBtn} onClick={onOpenChat}>Open Chat</button>
+    </div>
+  );
+};
+
+ 
+  const StoreOwnerDashboard = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const [stores, setStores] = useState([]);
@@ -545,7 +610,7 @@ const StoreOwnerDashboard = () => {
           {tabs.map(tab => (
             <button key={tab.key}
               style={{ ...styles.sidebarBtn, ...(activeTab === tab.key ? styles.sidebarBtnActive : {}) }}
-              onClick={() => { setActiveTab(tab.key); if (tab.key === 'messages') fetchMessages(); setSidebarOpen(false); }}>
+              onClick={() => { setActiveTab(tab.key); if (tab.key === 'messages') fetchMessages(); if (tab.key === 'ratings' && selectedStore) fetchRatings(selectedStore.id); setSidebarOpen(false); }}>
               <span style={styles.sidebarBtnIcon}>{tab.icon}</span>
               <span>{tab.label}</span>
               {tab.key === 'orders' && pendingOrders > 0 && (
@@ -809,7 +874,7 @@ const StoreOwnerDashboard = () => {
                   <table style={styles.table}>
                     <thead>
                       <tr>
-                        {['Order', 'Customer', 'Total', 'Date', 'Status', 'Actions'].map(h => <th key={h} style={styles.th}>{h}</th>)}
+                        {['Order', 'Customer', 'Total', 'Date', 'Notes', 'Status', 'Actions'].map(h => <th key={h} style={styles.th}>{h}</th>)}
                       </tr>
                     </thead>
                     <tbody>
@@ -819,6 +884,14 @@ const StoreOwnerDashboard = () => {
                           <td style={styles.td}><span style={styles.tdMuted}>User #{order.buyerId}</span></td>
                           <td style={styles.td}><span style={{ color: '#3b82f6', fontWeight: '600', fontSize: '14px' }}>P{order.totalAmount}</span></td>
                           <td style={styles.td}><span style={styles.tdMuted}>{new Date(order.createdAt).toLocaleDateString()}</span></td>
+                          <td style={styles.td}>
+                            <div style={{ fontSize: '12px', color: '#a1a1aa', maxWidth: '180px' }}>
+                              {order.deliveryAddress && <div>📍 {order.deliveryAddress}</div>}
+                              {order.contactNumber && <div>📞 {order.contactNumber}</div>}
+                              {order.deliveryNotes && <div style={{ color: '#f59e0b' }}>📝 {order.deliveryNotes}</div>}
+                              {!order.deliveryAddress && !order.notes && <span style={{ color: '#3f3f46' }}>—</span>}
+                            </div>
+                          </td>
                           <td style={styles.td}>
                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 10px', borderRadius: '20px', border: '1px solid', fontSize: '11px', fontWeight: '600', backgroundColor: `${getStatusColor(order.status)}18`, color: getStatusColor(order.status), borderColor: `${getStatusColor(order.status)}40` }}>
                               <span style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: getStatusColor(order.status), display: 'inline-block' }}></span>
@@ -853,14 +926,16 @@ const StoreOwnerDashboard = () => {
                   const otherId = msg.senderId === user.id ? msg.receiverId : msg.senderId;
                   const otherName = msg.senderId === user.id ? `User #${msg.receiverId}` : msg.senderUsername;
                   return (
-                    <div key={msg.id} style={styles.conversationCard}>
-                      <div style={styles.convAvatar}><UserIcon /></div>
-                      <div style={{ flex: 1 }}>
-                        <p style={{ color: '#e4e4e7', fontWeight: '600', fontSize: '14px', margin: 0 }}>{otherName}</p>
-                        <p style={{ color: '#71717a', fontSize: '12px', margin: '3px 0 0' }}>{msg.message}</p>
-                      </div>
-                      <button style={styles.actionBtn} onClick={() => navigate(`/chat/${otherId}`)}>Open Chat</button>
-                    </div>
+                    <ConversationCard
+                      key={msg.id}
+                      msg={msg}
+                      otherId={otherId}
+                      otherName={otherName}
+                      onOpenChat={() => navigate(`/chat/${otherId}`)}
+                      actionBtn={styles.actionBtn}
+                      convAvatar={styles.convAvatar}
+                      conversationCard={styles.conversationCard}
+                    />
                   );
                 })}
               </div>
@@ -887,7 +962,15 @@ const StoreOwnerDashboard = () => {
                       <span style={{ color: '#a1a1aa', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}><UserIcon /> User #{rating.user_id}</span>
                       <div>{renderStars(rating.rating)}</div>
                     </div>
-                    {rating.comment && <p style={{ color: '#e4e4e7', fontSize: '14px', marginBottom: '8px', fontStyle: 'italic' }}>"{rating.comment}"</p>}
+                   {rating.comment && <p style={{ color: '#e4e4e7', fontSize: '14px', marginBottom: '8px', fontStyle: 'italic' }}>"{rating.comment}"</p>}
+                      {rating.reply ? (
+                        <div style={{ backgroundColor: '#1e2a3b', borderLeft: '3px solid #3b82f6', padding: '10px 14px', borderRadius: '6px', marginTop: '8px' }}>
+                          <p style={{ fontSize: '11px', color: '#3b82f6', fontWeight: '600', margin: '0 0 4px' }}>Store Reply</p>
+                          <p style={{ fontSize: '13px', color: '#a1a1aa', margin: 0 }}>{rating.reply}</p>
+                        </div>
+                      ) : (
+                        <ReplyBox ratingId={rating.id} onReplied={() => fetchRatings(selectedStore.id)} />
+                      )}
                     <p style={{ color: '#52525b', fontSize: '12px', margin: 0 }}>{new Date(rating.created_at).toLocaleDateString()}</p>
                   </div>
                 ))}

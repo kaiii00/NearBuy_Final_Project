@@ -37,6 +37,7 @@ export const loginUser = (data) => springApi.post('/auth/login', data);
 
 // Profile
 export const getProfile = () => springApi.get('/users/profile');
+export const getPublicProfile = (userId) => springApi.get(`/users/${userId}/public`);
 
 // Stores & Products
 export const getStores = () => springApi.get('/stores');
@@ -45,6 +46,23 @@ export const getProducts = (storeId) => springApi.get(`/stores/${storeId}/produc
 // Orders
 export const placeOrder = (data) => springApi.post('/orders', data);
 export const getOrders = () => springApi.get('/orders/my');
+export const cancelOrder = (orderId) => springApi.patch(`/orders/${orderId}/status`, { status: 'CANCELLED' });
+
+// Chat media upload
+export const uploadProfilePhoto = (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return springApi.post('/users/profile/upload-photo', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+    });
+};
+export const uploadChatMedia = (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return springApi.post('/chat/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+    });
+};
 
 // Chat - Spring Boot
 export const getMessages = (userId) => springApi.get(`/chat/${userId}`);
@@ -54,6 +72,7 @@ export const sendMessage = (data) => springApi.post('/chat', data);
 export const submitFeedback = (data) => phpApi.post('/feedback', data);
 export const submitRating = (data) => phpApi.post('/ratings', data);
 export const getStoreRatings = (storeId) => phpApi.get(`/ratings/store/${storeId}`);
+export const replyToRating = (ratingId, reply) => phpApi.patch(`/ratings/${ratingId}/reply`, { reply });
 export const getOrderFeedback = (orderId) => phpApi.get(`/feedback/order/${orderId}`);
 
 // Notifications - Django

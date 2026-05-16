@@ -173,6 +173,7 @@ public class OrderService {
                 .store(store)
                 .deliveryAddress(request.getDeliveryAddress())
                 .deliveryNotes(request.getDeliveryNotes())
+                .contactNumber(request.getContactNumber())
                 .totalAmount(totalAmount)
                 .deliveryFee(store.getDeliveryFee())
                 .status(Order.OrderStatus.PENDING)
@@ -235,12 +236,9 @@ public class OrderService {
         boolean isBuyer      = order.getBuyerId().equals(requesterId);
         boolean isAdmin      = "ADMIN".equalsIgnoreCase(role);
 
-        if (isBuyer && newStatus == Order.OrderStatus.CANCELLED) {
-            if (order.getStatus() != Order.OrderStatus.PENDING) {
-                throw new BadRequestException("Can only cancel pending orders");
-            }
-            restoreStock(order);
-        } else if (isStoreOwner || isAdmin) {
+        if (isBuyer) {
+            throw new ForbiddenException("Only the store owner can cancel this order");
+        } else if (isStoreOwner || isAdmin) {                                            
             if (newStatus == Order.OrderStatus.CANCELLED) {
                 restoreStock(order);
             }

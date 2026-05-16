@@ -38,6 +38,8 @@ public class OrderDTO {
         private String deliveryAddress;
 
         private String deliveryNotes;
+
+        private String contactNumber;
     }
 
     @Data
@@ -95,6 +97,7 @@ public class OrderDTO {
         private LocalDateTime estimatedDeliveryTime;
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
+        private String contactNumber;
 
         public static Response from(Order order) {
             return Response.builder()
@@ -102,6 +105,7 @@ public class OrderDTO {
                     .buyerId(order.getBuyerId())
                     .storeId(order.getStore().getId())
                     .storeName(order.getStore().getName())
+                    .contactNumber(order.getContactNumber())
                     .items(order.getItems() != null ?
                            order.getItems().stream()
                                .map(OrderItemResponse::from)

@@ -43,7 +43,10 @@ public class SecurityConfig {
                     "/ws/**",
                     "/ws/chat/**",
                     "/ws/chat/info/**",
-                    "/actuator/health"
+                    "/actuator/health",
+                    "/api/chat/uploads/**",
+                    "/api/users/profile/uploads/**",
+                    "/api/users/*/public"
                 ).permitAll()
                 .anyRequest().authenticated()
             )
