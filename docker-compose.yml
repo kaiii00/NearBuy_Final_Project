@@ -25,6 +25,10 @@ services:
       - "8001:80"
     environment:
       - DJANGO_SECRET_KEY=nearbuy_super_secret_jwt_key_2024_shared
+    networks:
+      default:
+        aliases:
+          - php-api
     depends_on:
       postgres_db:
         condition: service_healthy
@@ -43,11 +47,15 @@ services:
       - DB_NAME=nearbuy
       - DB_USER=admin
       - DB_PASSWORD=admin123
+    networks:
+      default:
+        aliases:
+          - django-api
     depends_on:
       postgres_db:
         condition: service_healthy
 
-  springboot_app:
+  springboot-app:
     build: ./springboot
     container_name: springboot_app
     ports:
@@ -61,7 +69,32 @@ services:
     depends_on:
       postgres_db:
         condition: service_healthy
+      eureka-server:
+        condition: service_started
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
 
+  eureka-server:
+    build: ./eureka-server
+    container_name: eureka-server
+    ports:
+      - "8761:8761"
+
+  gateway:
+    build: ./gateway
+    container_name: gateway
+    ports:
+      - "8000:8000"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+    depends_on:
+      springboot-app:
+        condition: service_started
+      django_api:
+        condition: service_started
+      php_api:
+        condition: service_started
   react_front:
     build: ./react
     container_name: react_front
@@ -69,7 +102,7 @@ services:
       - "3000:3000"
     depends_on:
       - php_api
-      - springboot_app
+      - springboot-app
 
 volumes:
   postgres_data:

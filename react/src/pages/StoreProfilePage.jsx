@@ -1,6 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { springApi, phpApi } from '../services/api';
+  
+
+
+
+const OwnerAvatar = ({ ownerId, fallback }) => {
+  const [photo, setPhoto] = React.useState(null);
+  React.useEffect(() => {
+    if (!ownerId) return;
+    fetch(`http://localhost:8080/api/users/${ownerId}/public`)
+      .then(r => r.json())
+      .then(d => { if (d.profilePhoto) setPhoto(`http://localhost:8080${d.profilePhoto}`); })
+      .catch(() => {});
+  }, [ownerId]);
+
+  return photo
+    ? <img src={photo} alt="owner" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+    : <div style={{ width: '100%', height: '100%', backgroundColor: '#d1fae5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', fontWeight: '700' }}>{fallback}</div>;
+};
+
 
 const StoreProfilePage = () => {
   const navigate = useNavigate();
@@ -9,10 +28,11 @@ const StoreProfilePage = () => {
   const [ratings, setRatings] = useState([]);
   const [ratingSummary, setRatingSummary] = useState(null);
   const [loading, setLoading] = useState(true);
-
+  const [productCount, setProductCount] = useState(0);
   useEffect(() => {
     fetchStore();
     fetchRatings();
+    fetchProducts();
   }, [storeId]);
 
   const fetchStore = async () => {
@@ -25,6 +45,15 @@ const StoreProfilePage = () => {
       setLoading(false);
     }
   };
+
+  const fetchProducts = async () => {
+      try {
+        const res = await springApi.get(`/stores/${storeId}/products`);
+        setProductCount(res.data.length);
+      } catch (err) {
+        console.error('Failed to load products', err);
+      }
+    };
 
   const fetchRatings = async () => {
     try {
@@ -70,10 +99,37 @@ const StoreProfilePage = () => {
         {/* Store Hero */}
         {store && (
           <div style={s.heroCard}>
+            {/* Cover photo */}
+            <div style={{ position: 'relative', marginBottom: '48px' }}>
+              <div style={{
+                width: '100%', height: '180px', borderRadius: '12px', overflow: 'hidden',
+                backgroundColor: '#e5e7eb',
+                backgroundImage: store.imageUrl ? `url(${store.imageUrl.startsWith('/api') ? `http://localhost:8080${store.imageUrl}` : store.imageUrl})` : 'none',
+                backgroundSize: 'cover', backgroundPosition: 'center',
+              }} />
+              {/* Owner avatar overlapping cover */}
+              <div style={{
+                position: 'absolute', bottom: '-36px', left: '24px',
+                width: '72px', height: '72px', borderRadius: '16px',
+                border: '3px solid #fff', overflow: 'hidden',
+                backgroundColor: '#d1fae5', boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+              }}>
+                <OwnerAvatar ownerId={store.ownerId} fallback={store.name?.[0]?.toUpperCase()} />
+              </div>
+            </div>
             <div style={s.heroTop}>
-              <div style={s.storeAvatar}>{store.name?.[0]?.toUpperCase()}</div>
+              <div style={{ width: '72px', flexShrink: 0 }} />
               <div style={s.heroInfo}>
-                <h1 style={s.storeName}>{store.name}</h1>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+                  <h1 style={{ ...s.storeName, margin: 0 }}>{store.name}</h1>
+                  <span style={{
+                    fontSize: '11px', fontWeight: '600', padding: '3px 10px', borderRadius: '20px',
+                    backgroundColor: store.status === 'ACTIVE' ? '#d1fae5' : '#fee2e2',
+                    color: store.status === 'ACTIVE' ? '#059669' : '#dc2626',
+                  }}>
+                    {store.status === 'ACTIVE' ? '🟢 Open' : '🔴 Closed'}
+                  </span>
+                </div>
                 <div style={s.metaRow}>
                   {store.address && <span style={s.metaTag}>📍 {store.address}</span>}
                   {store.city && <span style={s.metaTag}>🏙 {store.city}</span>}
@@ -88,7 +144,16 @@ const StoreProfilePage = () => {
                 {store.description && <p style={s.storeDesc}>{store.description}</p>}
               </div>
             </div>
-            <button style={s.shopBtnLarge} onClick={handleShop}>🛍 Browse Products</button>
+           <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
+              <button style={s.shopBtnLarge} onClick={handleShop}>🛍 Browse {productCount > 0 ? `${productCount} Products` : 'Products'}</button>
+              {store.ownerId && (
+                <button
+                  onClick={() => navigate(`/chat/${store.ownerId}`)}
+                  style={{ padding: '13px 20px', backgroundColor: '#eff6ff', color: '#3b82f6', border: '1px solid #bfdbfe', borderRadius: '10px', cursor: 'pointer', fontSize: '15px', fontWeight: '600', whiteSpace: 'nowrap' }}>
+                  💬 Chat
+                </button>
+              )}
+            </div>
           </div>
         )}
 

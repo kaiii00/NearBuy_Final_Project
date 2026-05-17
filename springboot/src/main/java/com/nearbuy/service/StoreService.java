@@ -94,7 +94,18 @@ public class StoreService {
         if (!store.getOwnerId().equals(requesterId) && !"ADMIN".equalsIgnoreCase(role)) {
             throw new ForbiddenException("You don't have permission to delete this store");
         }
+storeRepository.delete(store);
+    }
 
-        storeRepository.delete(store);
+    public Store getStoreEntityById(Long id) {
+        return storeRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Store not found with id: " + id));
+    }
+
+    public void updateStoreImage(Long storeId, String imageUrl, Long requesterId) {
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Store not found with id: " + storeId));
+        store.setImageUrl(imageUrl);
+        storeRepository.save(store);
     }
 }

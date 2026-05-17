@@ -315,6 +315,24 @@ const ReplyBox = ({ ratingId, onReplied }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
+  const [ownerPhoto, setOwnerPhoto] = useState(null);
+  const [accountForm, setAccountForm] = useState({ email: '', contact: '', currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [accountSaving, setAccountSaving] = useState(false);
+  const [showPassSection, setShowPassSection] = useState(false);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const photoInputRef = React.useRef(null);
+
+  useEffect(() => {
+    springApi.get('/users/profile').then(res => {
+      if (res.data.profilePhoto) setOwnerPhoto(`http://localhost:8080${res.data.profilePhoto}`);
+      setAccountForm(prev => ({
+        ...prev,
+        email: res.data.email || '',
+        contact: res.data.contact || '',
+      }));
+    }).catch(() => {});
+  }, []);
+
   useEffect(() => { fetchMyStores(); fetchMessages(); }, []);
 
   useEffect(() => {
@@ -463,6 +481,48 @@ const ReplyBox = ({ ratingId, onReplied }) => {
     } catch (err) { console.error('Failed to update order status', err); }
   };
 
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setPhotoUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await springApi.post('/users/profile/upload-photo', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setOwnerPhoto(`http://localhost:8080${res.data.photoUrl}`);
+      showToast('Photo updated!');
+    } catch (err) {
+      showToast('Failed to upload photo.', 'error');
+    } finally {
+      setPhotoUploading(false);
+    }
+  };
+
+  const handleSaveAccount = async () => {
+    if (showPassSection && accountForm.newPassword !== accountForm.confirmPassword) {
+      showToast("Passwords don't match.", 'error');
+      return;
+    }
+    setAccountSaving(true);
+    try {
+      const payload = { email: accountForm.email, contact: accountForm.contact };
+      if (showPassSection && accountForm.newPassword) {
+        payload.currentPassword = accountForm.currentPassword;
+        payload.newPassword = accountForm.newPassword;
+      }
+      await springApi.put('/users/profile', payload);
+      showToast('Account updated!');
+      setAccountForm(prev => ({ ...prev, currentPassword: '', newPassword: '', confirmPassword: '' }));
+      setShowPassSection(false);
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Failed to update account.', 'error');
+    } finally {
+      setAccountSaving(false);
+    }
+  };
+
   const handleSaveProfile = async () => {
     setProfileSaving(true);
     try {
@@ -550,7 +610,7 @@ const ReplyBox = ({ ratingId, onReplied }) => {
     { key: 'messages',  label: 'Messages',      icon: <MessageIcon /> },
     { key: 'ratings',   label: 'Ratings',       icon: <StarIcon /> },
     { key: 'feedback',  label: 'Feedback',      icon: <FeedbackIcon /> },
-    { key: 'profile',   label: 'Store Profile', icon: <SettingsIcon /> },
+    { key: 'profile',   label: 'Profile & Settings', icon: <SettingsIcon /> },
   ];
 
   return (
@@ -593,7 +653,12 @@ const ReplyBox = ({ ratingId, onReplied }) => {
               <button key={store.id}
                 style={{ ...styles.storeBtn, ...(selectedStore?.id === store.id ? styles.storeBtnActive : {}) }}
                 onClick={() => { setSelectedStore(store); setSidebarOpen(false); }}>
-                <span style={styles.storeBtnIcon}><StoreIcon /></span>
+                <span style={styles.storeBtnIcon}>
+                  {store.imageUrl
+                    ? <img src={store.imageUrl.startsWith('http') ? store.imageUrl : `http://localhost:8080${store.imageUrl}`} alt={store.name} style={{ width: '16px', height: '16px', borderRadius: '4px', objectFit: 'cover' }} />
+                    : <StoreIcon />
+                  }
+                </span>
                 <span style={styles.storeBtnName}>{store.name}</span>
               </button>
             ))}
@@ -623,11 +688,16 @@ const ReplyBox = ({ ratingId, onReplied }) => {
         {/* Bottom */}
         <div style={styles.sidebarBottom}>
           <div style={styles.ownerProfile}>
-            <div style={styles.ownerAvatar}>{user.username?.[0]?.toUpperCase() || 'S'}</div>
-            <div>
+            {ownerPhoto ? (
+              <img src={ownerPhoto} alt="profile" style={{ width: '36px', height: '36px', borderRadius: '8px', objectFit: 'cover', flexShrink: 0, border: '2px solid #3b82f6' }} />
+            ) : (
+              <div style={styles.ownerAvatar}>{user.username?.[0]?.toUpperCase() || 'S'}</div>
+            )}
+            <div style={{ flex: 1, minWidth: 0 }}>
               <div style={styles.ownerName}>{user.username}</div>
               <div style={styles.ownerRole}>Store Owner</div>
             </div>
+            
           </div>
           <button style={styles.logoutBtn} onClick={handleLogout}>
             <LogoutIcon />
@@ -1017,53 +1087,156 @@ const ReplyBox = ({ ratingId, onReplied }) => {
             </>
           )}
 
-          {/* STORE PROFILE */}
-          {activeTab === 'profile' && profileForm && (
-            <div style={styles.profileForm}>
-              {profileSuccess && (
-                <div style={{ backgroundColor: '#1e293b', border: '1px solid #3b82f640', borderRadius: '10px', padding: '12px 16px', color: '#3b82f6', fontSize: '14px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <CheckCircleIcon /> Store profile saved successfully!
+          {/* PROFILE & SETTINGS */}
+          {activeTab === 'profile' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              <div style={styles.profileForm}>
+                <h3 style={{ fontSize: '15px', fontWeight: '600', color: '#e4e4e7', margin: '0 0 20px', display: 'flex', alignItems: 'center', gap: '8px' }}>👤 Account</h3>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '24px' }}>
+                  <div style={{ position: 'relative', flexShrink: 0 }}>
+                    {ownerPhoto ? (
+                      <img src={ownerPhoto} alt="profile" style={{ width: '80px', height: '80px', borderRadius: '16px', objectFit: 'cover', border: '2px solid #3b82f6' }} />
+                    ) : (
+                      <div style={{ width: '80px', height: '80px', borderRadius: '16px', background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', fontWeight: '700', color: '#fff' }}>
+                        {user.username?.[0]?.toUpperCase() || 'S'}
+                      </div>
+                    )}
+                    <button onClick={() => photoInputRef.current.click()} style={{ position: 'absolute', bottom: '-8px', right: '-8px', width: '28px', height: '28px', borderRadius: '50%', backgroundColor: '#1f1f24', border: '2px solid #3b82f6', cursor: 'pointer', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {photoUploading ? '⏳' : '📷'}
+                    </button>
+                    <input ref={photoInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handlePhotoUpload} />
+                  </div>
+                  <div>
+                    <p style={{ color: '#e4e4e7', fontWeight: '600', fontSize: '15px', margin: '0 0 4px' }}>{user.username}</p>
+                    <p style={{ color: '#52525b', fontSize: '12px', margin: 0 }}>Click the camera to change your photo</p>
+                  </div>
                 </div>
-              )}
-              <div style={styles.profileGrid}>
-                {[
-                  { label: 'Store Name', key: 'name', type: 'text' },
-                  { label: 'Contact Number', key: 'contactNumber', type: 'text' },
-                  { label: 'Address', key: 'address', type: 'text' },
-                  { label: 'City', key: 'city', type: 'text' },
-                  { label: 'Barangay', key: 'barangay', type: 'text' },
-                  { label: 'Delivery Fee (P)', key: 'deliveryFee', type: 'number' },
-                  { label: 'Minimum Order (P)', key: 'minimumOrder', type: 'number' },
-                  { label: 'Est. Delivery (mins)', key: 'estimatedDeliveryMinutes', type: 'number' },
-                ].map(field => (
-                  <div key={field.key} style={styles.profileField}>
-                    <label style={styles.profileLabel}>{field.label.toUpperCase()}</label>
-                    <div style={styles.profileInputBox}>
-                      <input
-                        style={styles.profileInput}
-                        type={field.type}
-                        value={profileForm[field.key]}
-                        onChange={e => setProfileForm({ ...profileForm, [field.key]: field.type === 'number' ? Number(e.target.value) : e.target.value })}
-                      />
+                <div style={styles.profileGrid}>
+                  <div style={styles.profileField}>
+                    <label style={styles.profileLabel}>EMAIL</label>
+                    <input style={styles.profileInput} type="email" value={accountForm.email} onChange={e => setAccountForm({ ...accountForm, email: e.target.value })} placeholder="Your email" />
+                  </div>
+                  <div style={styles.profileField}>
+                    <label style={styles.profileLabel}>CONTACT NUMBER</label>
+                    <input style={styles.profileInput} type="text" value={accountForm.contact} onChange={e => setAccountForm({ ...accountForm, contact: e.target.value })} placeholder="Your contact number" />
+                  </div>
+                </div>
+                <div style={{ marginTop: '20px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <label style={styles.profileLabel}>PASSWORD</label>
+                    <button onClick={() => setShowPassSection(!showPassSection)} style={{ background: 'none', border: '1px solid #3b82f640', color: '#3b82f6', padding: '4px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '12px' }}>
+                      {showPassSection ? 'Cancel' : 'Change Password'}
+                    </button>
+                  </div>
+                  {showPassSection && (
+                    <div style={styles.profileGrid}>
+                      <div style={styles.profileField}>
+                        <label style={styles.profileLabel}>CURRENT PASSWORD</label>
+                        <input style={styles.profileInput} type="password" value={accountForm.currentPassword} onChange={e => setAccountForm({ ...accountForm, currentPassword: e.target.value })} placeholder="Current password" />
+                      </div>
+                      <div style={styles.profileField}>
+                        <label style={styles.profileLabel}>NEW PASSWORD</label>
+                        <input style={styles.profileInput} type="password" value={accountForm.newPassword} onChange={e => setAccountForm({ ...accountForm, newPassword: e.target.value })} placeholder="New password" />
+                      </div>
+                      <div style={styles.profileField}>
+                        <label style={styles.profileLabel}>CONFIRM NEW PASSWORD</label>
+                        <input style={styles.profileInput} type="password" value={accountForm.confirmPassword} onChange={e => setAccountForm({ ...accountForm, confirmPassword: e.target.value })} placeholder="Confirm new password" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <button style={{ ...styles.saveProfileBtn, marginTop: '24px', opacity: accountSaving ? 0.6 : 1 }} onClick={handleSaveAccount} disabled={accountSaving}>
+                  {accountSaving ? 'Saving...' : 'Save Account'}
+                </button>
+              </div>
+              {profileForm && (
+                <div style={styles.profileForm}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                    <h3 style={{ fontSize: '15px', fontWeight: '600', color: '#e4e4e7', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>🏪 Store Info</h3>
+                    <button
+                      onClick={async () => {
+                        const newStatus = selectedStore.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+                        try {
+                          const res = await springApi.put(`/stores/${selectedStore.id}`, { ...profileForm, status: newStatus });
+                          setStores(stores.map(s => s.id === selectedStore.id ? res.data : s));
+                          setSelectedStore(res.data);
+                          showToast(`Store marked as ${newStatus === 'ACTIVE' ? 'Open' : 'Closed'}.`);
+                        } catch (err) { showToast('Failed to update status.', 'error'); }
+                      }}
+                      style={{
+                        padding: '6px 14px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+                        fontSize: '12px', fontWeight: '600', fontFamily: "'DM Sans', sans-serif",
+                        backgroundColor: selectedStore?.status === 'ACTIVE' ? '#05966920' : '#ef444420',
+                        color: selectedStore?.status === 'ACTIVE' ? '#059669' : '#ef4444',
+                      }}>
+                      {selectedStore?.status === 'ACTIVE' ? '🟢 Open — Mark Closed' : '🔴 Closed — Mark Open'}
+                    </button>
+                  </div>
+                  {profileSuccess && (
+                    <div style={{ backgroundColor: '#1e293b', border: '1px solid #3b82f640', borderRadius: '10px', padding: '12px 16px', color: '#3b82f6', fontSize: '14px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <CheckCircleIcon /> Store info saved successfully!
+                    </div>
+                  )}
+                  {/* Store Image Upload */}
+                  <div style={{ marginBottom: '20px' }}>
+                    <label style={styles.profileLabel}>STORE IMAGE</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '8px' }}>
+                      {selectedStore?.imageUrl ? (
+                        <img src={selectedStore.imageUrl.startsWith('/api') ? `http://localhost:8080${selectedStore.imageUrl}` : selectedStore.imageUrl}
+                          alt="store" style={{ width: '80px', height: '80px', borderRadius: '12px', objectFit: 'cover', border: '2px solid #27272a' }} />
+                      ) : (
+                        <div style={{ width: '80px', height: '80px', borderRadius: '12px', backgroundColor: '#1a1a1f', border: '2px dashed #27272a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>🏪</div>
+                      )}
+                      <div>
+                        <input type="file" accept="image/*" id="storeImageInput" style={{ display: 'none' }}
+                          onChange={async (e) => {
+                            const file = e.target.files[0];
+                            if (!file) return;
+                            try {
+                              const res = await springApi.post(`/stores/${selectedStore.id}/upload-image`, (() => { const f = new FormData(); f.append('file', file); return f; })(), { headers: { 'Content-Type': 'multipart/form-data' } });
+                              const updated = { ...selectedStore, imageUrl: res.data.imageUrl };
+                              setSelectedStore(updated);
+                              setStores(stores.map(s => s.id === selectedStore.id ? updated : s));
+                              showToast('Store image updated!');
+                            } catch { showToast('Failed to upload image.', 'error'); }
+                          }}
+                        />
+                        <button onClick={() => document.getElementById('storeImageInput').click()}
+                          style={{ padding: '8px 16px', backgroundColor: '#1a1a1f', border: '1px solid #27272a', borderRadius: '8px', color: '#e4e4e7', cursor: 'pointer', fontSize: '13px', fontFamily: 'inherit' }}>
+                          📷 Upload Image
+                        </button>
+                        <p style={{ fontSize: '11px', color: '#52525b', margin: '6px 0 0' }}>Shown on the buyer store card</p>
+                      </div>
                     </div>
                   </div>
-                ))}
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <label style={styles.profileLabel}>DESCRIPTION</label>
-                  <textarea
-                    style={{ ...styles.profileInput, height: '90px', resize: 'vertical', padding: '12px', borderRadius: '10px', border: '1px solid #27272a', backgroundColor: '#1a1a1f', color: '#e4e4e7', width: '100%', boxSizing: 'border-box', fontFamily: 'inherit', fontSize: '14px', outline: 'none' }}
-                    value={profileForm.description}
-                    onChange={e => setProfileForm({ ...profileForm, description: e.target.value })}
-                  />
+                  <div style={styles.profileGrid}>
+                    {[
+                      { label: 'Store Name', key: 'name', type: 'text' },
+                      { label: 'Contact Number', key: 'contactNumber', type: 'text' },
+                      { label: 'Address', key: 'address', type: 'text' },
+                      { label: 'City', key: 'city', type: 'text' },
+                      { label: 'Barangay', key: 'barangay', type: 'text' },
+                      { label: 'Delivery Fee (P)', key: 'deliveryFee', type: 'number' },
+                      { label: 'Minimum Order (P)', key: 'minimumOrder', type: 'number' },
+                      { label: 'Est. Delivery (mins)', key: 'estimatedDeliveryMinutes', type: 'number' },
+                    ].map(field => (
+                      <div key={field.key} style={styles.profileField}>
+                        <label style={styles.profileLabel}>{field.label.toUpperCase()}</label>
+                        <input style={styles.profileInput} type={field.type} value={profileForm[field.key]}
+                          onChange={e => setProfileForm({ ...profileForm, [field.key]: field.type === 'number' ? Number(e.target.value) : e.target.value })} />
+                      </div>
+                    ))}
+                    <div style={{ gridColumn: '1 / -1' }}>
+                      <label style={styles.profileLabel}>DESCRIPTION</label>
+                      <textarea style={{ ...styles.profileInput, height: '90px', resize: 'vertical', padding: '12px', borderRadius: '10px', border: '1px solid #27272a', backgroundColor: '#1a1a1f', color: '#e4e4e7', width: '100%', boxSizing: 'border-box', fontFamily: 'inherit', fontSize: '14px', outline: 'none' }}
+                        value={profileForm.description} onChange={e => setProfileForm({ ...profileForm, description: e.target.value })} />
+                    </div>
+                  </div>
+                  <button style={{ ...styles.saveProfileBtn, opacity: profileSaving ? 0.6 : 1, marginTop: '24px' }} onClick={handleSaveProfile} disabled={profileSaving}>
+                    {profileSaving ? 'Saving...' : 'Save Store Info'}
+                  </button>
                 </div>
-              </div>
-              <button
-                style={{ ...styles.saveProfileBtn, opacity: profileSaving ? 0.6 : 1, marginTop: '24px' }}
-                onClick={handleSaveProfile}
-                disabled={profileSaving}
-              >
-                {profileSaving ? 'Saving...' : 'Save Changes'}
-              </button>
+              )}
             </div>
           )}
         </div>
@@ -1161,7 +1334,7 @@ const styles = {
     height: '100vh', 
     overflowY: 'auto',
     zIndex: 999,
-    transform: 'translateX(-100%)',
+    transform: window.innerWidth > 768 ? 'translateX(0)' : 'translateX(-100%)',
     transition: 'transform 0.3s ease',
   },
   sidebarOpen: {
@@ -1193,7 +1366,7 @@ const styles = {
   logoutBtn: { width: '100%', padding: '10px', backgroundColor: '#1a1a1f', color: '#71717a', border: '1px solid #27272a', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontFamily: "'DM Sans', sans-serif", display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'all 0.15s' },
 
   // Main
-  main: { flex: 1, display: 'flex', flexDirection: 'column', overflow: 'auto', marginLeft: '0' },
+  main: { flex: 1, display: 'flex', flexDirection: 'column', overflow: 'auto', marginLeft: window.innerWidth > 768 ? '260px' : '0' },
   topbar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #1f1f24', flexWrap: 'wrap', gap: '16px' },
   topbarLeft: { display: 'flex', alignItems: 'center', gap: '16px' },
   hamburgerBtn: { display: 'flex', alignItems: 'center', justifyContent: 'center', width: '42px', height: '42px', backgroundColor: '#1a1a1f', border: '1px solid #27272a', borderRadius: '10px', color: '#e4e4e7', cursor: 'pointer', transition: 'all 0.15s' },

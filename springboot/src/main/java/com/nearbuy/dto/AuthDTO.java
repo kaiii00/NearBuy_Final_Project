@@ -34,6 +34,13 @@ public class AuthDTO {
         private String password;
     }
 
+   @Data
+    public static class CompleteProfileRequest {
+        private Long userId;
+        private String username;
+        private String role;
+    }
+
     @Data
     @Builder
     @AllArgsConstructor

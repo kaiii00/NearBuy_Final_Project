@@ -1,6 +1,7 @@
 package com.nearbuy.config;
 
 import com.nearbuy.security.JwtAuthFilter;
+import com.nearbuy.security.OAuth2SuccessHandler;
 import com.nearbuy.security.UserDetailsServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -29,6 +30,7 @@ public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
     private final UserDetailsServiceImpl userDetailsService;
+    private final OAuth2SuccessHandler oAuth2SuccessHandler;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -36,7 +38,7 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session
-                .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
                     "/api/auth/**",
@@ -44,17 +46,19 @@ public class SecurityConfig {
                     "/ws/chat/**",
                     "/ws/chat/info/**",
                     "/actuator/health",
-                    "/api/chat/uploads/**",
+                    "/api/stores/uploads/**",
                     "/api/users/profile/uploads/**",
                     "/api/users/*/public"
                 ).permitAll()
                 .anyRequest().authenticated()
             )
+           .oauth2Login(oauth2 -> oauth2
+                .successHandler(oAuth2SuccessHandler)
+            )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
-
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();

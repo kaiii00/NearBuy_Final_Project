@@ -56,6 +56,15 @@ export const uploadProfilePhoto = (file) => {
         headers: { 'Content-Type': 'multipart/form-data' }
     });
 };
+
+  export const uploadStoreImage = (storeId, file) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      return springApi.post(`/stores/${storeId}/upload-image`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+      });
+  };
+  
 export const uploadChatMedia = (file) => {
     const formData = new FormData();
     formData.append('file', file);

@@ -25,4 +25,11 @@ public class AuthController {
             @Valid @RequestBody AuthDTO.LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
     }
+    @PutMapping("/oauth2/complete-profile")
+    public ResponseEntity<?> completeOAuthProfile(
+            @RequestBody AuthDTO.CompleteProfileRequest request) {
+        return ResponseEntity.ok(authService.completeOAuthProfile(request));
+    }
+    
 }
+    

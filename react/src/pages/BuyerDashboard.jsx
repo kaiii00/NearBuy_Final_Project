@@ -4,7 +4,183 @@ import { getStores, getOrders, placeOrder, cancelOrder, getNotifications, markNo
 import OrderReceiptModal from '../components/OrderReceiptModal';
 import Feedback from './Feedback';
 
-const BuyerDashboard = () => {
+// ── Cart Drawer ───────────────────────────────────────────────────────────────
+const CartDrawer = ({ open, onClose, onCheckout }) => {
+  const [cart, setCart] = useState([]);
+  const [storeName, setStoreName] = useState('');
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (open) loadCart();
+  }, [open]);
+
+  const loadCart = () => {
+    const savedCart = JSON.parse(localStorage.getItem('cart') || '[]');
+    const savedStoreId = localStorage.getItem('storeId');
+    setCart(savedCart);
+    // Try to get store name
+    if (savedStoreId) {
+      springApi.get(`/stores/${savedStoreId}`).then(res => setStoreName(res.data.name)).catch(() => {});
+    }
+  };
+
+  const updateCart = (newCart) => {
+    setCart(newCart);
+    localStorage.setItem('cart', JSON.stringify(newCart));
+  };
+
+  const increase = (productId) => {
+    updateCart(cart.map(item => item.id === productId ? { ...item, quantity: item.quantity + 1 } : item));
+  };
+
+  const decrease = (productId) => {
+    const item = cart.find(i => i.id === productId);
+    if (item?.quantity === 1) {
+      updateCart(cart.filter(i => i.id !== productId));
+    } else {
+      updateCart(cart.map(i => i.id === productId ? { ...i, quantity: i.quantity - 1 } : i));
+    }
+  };
+
+  const remove = (productId) => {
+    updateCart(cart.filter(i => i.id !== productId));
+  };
+
+  const clearCart = () => {
+    updateCart([]);
+    localStorage.removeItem('storeId');
+  };
+
+  const totalItems = cart.reduce((s, i) => s + i.quantity, 0);
+  const totalPrice = cart.reduce((s, i) => s + i.price * i.quantity, 0);
+  const storeId = localStorage.getItem('storeId');
+
+  const handleCheckout = () => {
+    onClose();
+    navigate('/checkout');
+  };
+
+  return (
+    <>
+      {/* Overlay */}
+      {open && (
+        <div
+          onClick={onClose}
+          style={{
+            position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)',
+            zIndex: 400, backdropFilter: 'blur(2px)',
+          }}
+        />
+      )}
+
+      {/* Drawer */}
+      <div style={{
+        position: 'fixed', top: 0, right: 0, bottom: 0, width: '380px',
+        backgroundColor: '#0e0e11', borderLeft: '1px solid #1f1f24',
+        zIndex: 500, display: 'flex', flexDirection: 'column',
+        transform: open ? 'translateX(0)' : 'translateX(100%)',
+        transition: 'transform 0.3s cubic-bezier(0.4,0,0.2,1)',
+        boxShadow: open ? '-20px 0 60px rgba(0,0,0,0.5)' : 'none',
+      }}>
+        {/* Header */}
+        <div style={{ padding: '20px', borderBottom: '1px solid #1f1f24', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h2 style={{ fontSize: '16px', fontWeight: '700', color: '#fff', margin: 0 }}>🛒 Your Cart</h2>
+            {storeName && <p style={{ fontSize: '12px', color: '#52525b', margin: '3px 0 0' }}>from {storeName}</p>}
+          </div>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            {cart.length > 0 && (
+              <button onClick={clearCart} style={{ fontSize: '11px', color: '#ef4444', backgroundColor: 'transparent', border: '1px solid #ef444440', borderRadius: '6px', padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit' }}>
+                Clear
+              </button>
+            )}
+            <button onClick={onClose} style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#1a1a1f', border: '1px solid #27272a', color: '#71717a', cursor: 'pointer', fontSize: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              ✕
+            </button>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
+          {cart.length === 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: '12px' }}>
+              <div style={{ fontSize: '56px' }}>🛒</div>
+              <p style={{ fontSize: '15px', fontWeight: '600', color: '#52525b', margin: 0 }}>Your cart is empty</p>
+              <p style={{ fontSize: '13px', color: '#3f3f46', margin: 0, textAlign: 'center' }}>Browse stores and add items to get started!</p>
+              <button onClick={onClose} style={{ marginTop: '8px', padding: '10px 24px', backgroundColor: '#f97316', color: '#fff', border: 'none', borderRadius: '9px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', fontFamily: 'inherit' }}>
+                Browse Stores
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {cart.map(item => (
+                <div key={item.id} style={{ backgroundColor: '#111114', border: '1px solid #1f1f24', borderRadius: '12px', padding: '14px', display: 'flex', gap: '12px', alignItems: 'center' }}>
+                  {/* Image or placeholder */}
+                  <div style={{ width: '52px', height: '52px', borderRadius: '10px', backgroundColor: '#1c1c22', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', flexShrink: 0, overflow: 'hidden' }}>
+                    {item.imageUrl ? <img src={item.imageUrl} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '🛍️'}
+                  </div>
+
+                  {/* Info */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: '13px', fontWeight: '600', color: '#e4e4e7', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</p>
+                    <p style={{ fontSize: '11px', color: '#52525b', margin: '0 0 8px' }}>{item.category}</p>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '14px', fontWeight: '700', color: '#f97316' }}>₱{(item.price * item.quantity).toFixed(2)}</span>
+                      {/* Qty controls */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <button onClick={() => decrease(item.id)} style={{ width: '26px', height: '26px', borderRadius: '6px', backgroundColor: '#1c1c22', border: '1px solid #27272a', color: '#e4e4e7', cursor: 'pointer', fontSize: '14px', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</button>
+                        <span style={{ fontSize: '13px', fontWeight: '700', color: '#fff', minWidth: '16px', textAlign: 'center' }}>{item.quantity}</span>
+                        <button onClick={() => increase(item.id)} style={{ width: '26px', height: '26px', borderRadius: '6px', backgroundColor: '#f97316', border: 'none', color: '#fff', cursor: 'pointer', fontSize: '14px', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Remove */}
+                  <button onClick={() => remove(item.id)} style={{ color: '#3f3f46', backgroundColor: 'transparent', border: 'none', cursor: 'pointer', fontSize: '16px', padding: '4px', flexShrink: 0 }}>✕</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        {cart.length > 0 && (
+          <div style={{ padding: '16px 20px', borderTop: '1px solid #1f1f24' }}>
+            {/* Summary */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+              <span style={{ fontSize: '13px', color: '#71717a' }}>{totalItems} item{totalItems !== 1 ? 's' : ''}</span>
+              <span style={{ fontSize: '13px', color: '#71717a' }}>Subtotal</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <span style={{ fontSize: '20px', fontWeight: '700', color: '#f97316' }}>₱{totalPrice.toFixed(2)}</span>
+              <span style={{ fontSize: '13px', color: '#52525b', alignSelf: 'flex-end' }}>+ delivery fee</span>
+            </div>
+
+            {/* View store button */}
+            {storeId && (
+              <button
+                onClick={() => { onClose(); navigate(`/products/${storeId}`); }}
+                style={{ width: '100%', padding: '10px', backgroundColor: 'transparent', color: '#71717a', border: '1px solid #27272a', borderRadius: '9px', cursor: 'pointer', fontSize: '13px', fontWeight: '500', fontFamily: 'inherit', marginBottom: '8px' }}
+              >
+                ← Continue Shopping
+              </button>
+            )}
+
+            {/* Checkout button */}
+            <button
+              onClick={handleCheckout}
+              style={{ width: '100%', padding: '13px', backgroundColor: '#f97316', color: '#fff', border: 'none', borderRadius: '9px', cursor: 'pointer', fontSize: '15px', fontWeight: '700', fontFamily: 'inherit', boxShadow: '0 4px 16px rgba(249,115,22,0.35)' }}
+            >
+              Checkout → ₱{totalPrice.toFixed(2)}
+            </button>
+          </div>
+        )}
+      </div>
+    </>
+  );
+};
+
+  const BuyerDashboard = () => {
   const navigate = useNavigate();
   const [stores, setStores] = useState([]);
   const [orders, setOrders] = useState([]);
@@ -20,64 +196,82 @@ const BuyerDashboard = () => {
   const [receiptOrder, setReceiptOrder] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showCart, setShowCart] = useState(false);
+  const [cartCount, setCartCount] = useState(0);
   const notifRef = useRef(null);
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const [unreadChats, setUnreadChats] = useState(0);
   const [unreadFromId, setUnreadFromId] = useState(null);
   const [conversations, setConversations] = useState([]);
+  const [storeRatings, setStoreRatings] = useState({});
 
-    const checkUnreadMessages = useCallback(async () => {
-      try {
-        const storesRes = await getStores();
-        let totalUnread = 0;
-        let firstUnreadId = null;
-        for (const store of storesRes.data) {
-          const ownerId = store.ownerId;
-          if (!ownerId) continue;
-          const res = await getMessages(ownerId);
-          const msgs = res.data || [];
-          const lastSeenKey = `chat_seen_${user.id}_${ownerId}`;
-          const lastSeen = localStorage.getItem(lastSeenKey);
-          const unread = msgs.filter(m =>
-            m.senderId !== user.id &&
-            (!lastSeen || new Date(m.createdAt) > new Date(lastSeen))
-          );
-          if (unread.length > 0 && !firstUnreadId) firstUnreadId = ownerId;
-          totalUnread += unread.length;
-        }
-        setUnreadChats(totalUnread);
-        setUnreadFromId(firstUnreadId);
-      } catch (err) {
-        console.error('Failed to check unread messages', err);
+  // Refresh cart count whenever localStorage changes
+  const refreshCartCount = useCallback(() => {
+    const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+    const total = cart.reduce((s, i) => s + i.quantity, 0);
+    setCartCount(total);
+  }, []);
+
+  useEffect(() => {
+    refreshCartCount();
+    const interval = setInterval(refreshCartCount, 2000);
+    return () => clearInterval(interval);
+  }, [refreshCartCount]);
+
+  const checkUnreadMessages = useCallback(async () => {
+    try {
+      const storesRes = await getStores();
+      let totalUnread = 0;
+      let firstUnreadId = null;
+      for (const store of storesRes.data) {
+        const ownerId = store.ownerId;
+        if (!ownerId) continue;
+        const res = await getMessages(ownerId);
+        const msgs = res.data || [];
+        const lastSeenKey = `chat_seen_${user.id}_${ownerId}`;
+        const lastSeen = localStorage.getItem(lastSeenKey);
+        const unread = msgs.filter(m =>
+          m.senderId !== user.id &&
+          (!lastSeen || new Date(m.createdAt) > new Date(lastSeen))
+        );
+        if (unread.length > 0 && !firstUnreadId) firstUnreadId = ownerId;
+        totalUnread += unread.length;
       }
-   }, [user.id]);
+      setUnreadChats(totalUnread);
+      setUnreadFromId(firstUnreadId);
+    } catch (err) {
+      console.error('Failed to check unread messages', err);
+    }
+  }, [user.id]);
 
   const unreadCount = notifications.filter(n => !n.is_read).length;
+
   const fetchConversations = useCallback(async () => {
-      try {
-        const storesRes = await getStores();
-        const convos = [];
-        for (const store of storesRes.data) {
-          const ownerId = store.ownerId;
-          if (!ownerId) continue;
-          const res = await getMessages(ownerId);
-          const msgs = res.data || [];
-          if (msgs.length === 0) continue;
-          const lastMsg = msgs[msgs.length - 1];
-          const lastSeenKey = `chat_seen_${user.id}_${ownerId}`;
-          const lastSeen = localStorage.getItem(lastSeenKey);
-          const unread = msgs.filter(m =>
-            Number(m.senderId) !== Number(user.id) &&
-            (!lastSeen || new Date(m.createdAt) > new Date(lastSeen))
-          ).length;
-          convos.push({ ownerId, storeName: store.name, lastMsg, unread });
-        }
-        setConversations(convos);
-      } catch (err) { console.error('Failed to fetch conversations', err); }
-    }, [user.id]);
+    try {
+      const storesRes = await getStores();
+      const convos = [];
+      for (const store of storesRes.data) {
+        const ownerId = store.ownerId;
+        if (!ownerId) continue;
+        const res = await getMessages(ownerId);
+        const msgs = res.data || [];
+        if (msgs.length === 0) continue;
+        const lastMsg = msgs[msgs.length - 1];
+        const lastSeenKey = `chat_seen_${user.id}_${ownerId}`;
+        const lastSeen = localStorage.getItem(lastSeenKey);
+        const unread = msgs.filter(m =>
+          Number(m.senderId) !== Number(user.id) &&
+          (!lastSeen || new Date(m.createdAt) > new Date(lastSeen))
+        ).length;
+        convos.push({ ownerId, storeName: store.name, lastMsg, unread });
+      }
+      setConversations(convos);
+    } catch (err) { console.error('Failed to fetch conversations', err); }
+  }, [user.id]);
+
   const STATUS_STEPS = [
-    { key: 'PENDING',          label: 'Order Placed', emoji: '📋' },    
+    { key: 'PENDING',          label: 'Order Placed', emoji: '📋' },
     { key: 'CONFIRMED',        label: 'Confirmed',    emoji: '✅' },
     { key: 'PREPARING',        label: 'Preparing',    emoji: '👨‍🍳' },
     { key: 'OUT_FOR_DELIVERY', label: 'On the Way',   emoji: '🛵' },
@@ -88,21 +282,33 @@ const BuyerDashboard = () => {
     if (!user.id) return;
     try { const res = await getNotifications(user.id); setNotifications(res.data); }
     catch (err) { console.error('Failed to load notifications', err); }
-    }, [user.id]);
-    
-    const [profilePhoto, setProfilePhoto] = useState(null);
-    const [displayName, setDisplayName] = useState(user.username);
+  }, [user.id]);
 
-    useEffect(() => {
-      const fetchProfile = async () => {
-        try {
-          const res = await springApi.get('/users/profile');
-          if (res.data.profilePhoto) setProfilePhoto(`http://localhost:8080${res.data.profilePhoto}`);
-          if (res.data.displayName) setDisplayName(res.data.displayName);
-        } catch (err) {}
-      };
-      fetchProfile();
-    }, []);
+  const [profilePhoto, setProfilePhoto] = useState(null);
+  const [displayName, setDisplayName] = useState(user.username);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const res = await springApi.get('/users/profile');
+        if (res.data.profilePhoto) setProfilePhoto(`http://localhost:8080${res.data.profilePhoto}`);
+        if (res.data.displayName) setDisplayName(res.data.displayName);
+      } catch (err) {}
+    };
+    fetchProfile();
+  }, []);
+
+  const fetchStoreRatings = useCallback(async (storeList) => {
+    const results = {};
+    await Promise.all(storeList.map(async (store) => {
+      try {
+        const { phpApi } = await import('../services/api');
+        const res = await phpApi.get(`/ratings/store/${store.id}`);
+        results[store.id] = { average: res.data.average_rating, total: res.data.total_ratings };
+      } catch {}
+    }));
+    setStoreRatings(results);
+  }, []);
 
   const fetchData = useCallback(async (silent = false) => {
     try {
@@ -111,6 +317,7 @@ const BuyerDashboard = () => {
       setStores(storesRes.data);
       setOrders(ordersRes.data);
       setLastRefreshed(new Date());
+      fetchStoreRatings(storesRes.data);
     } catch (err) { console.error('Failed to load data', err); }
     finally { setLoading(false); }
   }, []);
@@ -189,22 +396,26 @@ const BuyerDashboard = () => {
     } catch (err) { console.error('Reorder failed', err); }
     finally { setReordering(null); }
   };
+
   const handleCancel = async (orderId) => {
     if (!window.confirm('Cancel this order?')) return;
     try {
-        await cancelOrder(orderId);
-        fetchData(true);
+      await cancelOrder(orderId);
+      fetchData(true);
     } catch (err) {
-        alert('Failed to cancel order.');
-        console.error(err);
+      alert('Failed to cancel order.');
+      console.error(err);
     }
-};
+  };
 
   const activeOrders = orders.filter(o => o.status !== 'DELIVERED' && o.status !== 'CANCELLED');
-  const pastOrders   = orders.filter(o => o.status === 'DELIVERED' || o.status === 'CANCELLED');
+  const pastOrders = orders.filter(o => o.status === 'DELIVERED' || o.status === 'CANCELLED');
 
   return (
     <div style={styles.root}>
+      {/* Cart Drawer */}
+      <CartDrawer open={showCart} onClose={() => { setShowCart(false); refreshCartCount(); }} />
+
       {/* Nav */}
       <nav style={styles.nav}>
         <div style={styles.navLeft}>
@@ -212,24 +423,38 @@ const BuyerDashboard = () => {
           <span style={styles.navBrand}>NearBuy</span>
         </div>
 
-       <div style={styles.navTabs}>
+        <div style={styles.navTabs}>
           <button style={{ ...styles.navTab, ...(activeTab === 'stores' ? styles.navTabActive : {}) }} onClick={() => setActiveTab('stores')}>
             ▦ Stores
           </button>
           <button style={{ ...styles.navTab, ...(activeTab === 'orders' ? styles.navTabActive : {}) }} onClick={() => setActiveTab('orders')}>
-          ◫ My Orders
-          {activeOrders.length > 0 && <span style={styles.badge}>{activeOrders.length}</span>}
-        </button>
-        <button style={{ ...styles.navTab, ...(activeTab === 'chats' ? styles.navTabActive : {}) }} onClick={() => { setActiveTab('chats'); setUnreadChats(0); setUnreadFromId(null); fetchConversations(); }}>
-          💬 Chats
-          {unreadChats > 0 && <span style={styles.badge}>{unreadChats > 9 ? '9+' : unreadChats}</span>}
-        </button>
-        <button style={{ ...styles.navTab, ...(activeTab === 'feedback' ? styles.navTabActive : {}) }} onClick={() => setActiveTab('feedback')}>
-          📝 Feedback
-        </button>
+            ◫ My Orders
+            {activeOrders.length > 0 && <span style={styles.badge}>{activeOrders.length}</span>}
+          </button>
+          <button style={{ ...styles.navTab, ...(activeTab === 'chats' ? styles.navTabActive : {}) }} onClick={() => { setActiveTab('chats'); setUnreadChats(0); setUnreadFromId(null); fetchConversations(); }}>
+            💬 Chats
+            {unreadChats > 0 && <span style={styles.badge}>{unreadChats > 9 ? '9+' : unreadChats}</span>}
+          </button>
+          <button style={{ ...styles.navTab, ...(activeTab === 'feedback' ? styles.navTabActive : {}) }} onClick={() => setActiveTab('feedback')}>
+            📝 Feedback
+          </button>
         </div>
 
         <div style={styles.navRight}>
+          {/* Cart Button */}
+          <button
+            style={{ ...styles.iconBtn, ...(cartCount > 0 ? { borderColor: '#f97316', backgroundColor: '#1c1a16' } : {}) }}
+            onClick={() => setShowCart(true)}
+            title="Cart"
+          >
+            🛒
+            {cartCount > 0 && (
+              <span style={{ ...styles.iconBadge, backgroundColor: '#f97316' }}>
+                {cartCount > 9 ? '9+' : cartCount}
+              </span>
+            )}
+          </button>
+
           {/* Notifications */}
           <div style={{ position: 'relative' }} ref={notifRef}>
             <button style={{ ...styles.iconBtn, backgroundColor: showNotifications ? '#1f1f2e' : '#111114', borderColor: showNotifications ? '#f97316' : '#27272a' }}
@@ -283,7 +508,6 @@ const BuyerDashboard = () => {
           </button>
 
           <button style={styles.iconBtn} onClick={() => navigate('/buyer/ratings')} title="Ratings">⭐</button>
-          
 
           <div style={styles.navDivider} />
 
@@ -295,7 +519,7 @@ const BuyerDashboard = () => {
             )}
             <span style={styles.profileName}>{displayName}</span>
           </button>
-          
+
           <button style={styles.logoutBtn} onClick={handleLogout}>Logout</button>
         </div>
       </nav>
@@ -351,9 +575,13 @@ const BuyerDashboard = () => {
                   <div key={store.id}
                     style={{ ...styles.storeCard, animationDelay: `${i * 40}ms`, borderColor: favorites.includes(store.id) ? '#ef444430' : '#1f1f24' }}
                     onClick={() => navigate(`/store/${store.id}`)}>
-                    {/* Card top row */}
                     <div style={styles.storeCardTop}>
-                      <div style={styles.storeAvatar}>🏪</div>
+                      <div style={styles.storeAvatar}>
+                        {store.imageUrl
+                          ? <img src={store.imageUrl.startsWith('/api') ? `http://localhost:8080${store.imageUrl}` : store.imageUrl} alt={store.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '12px' }} />
+                          : '🏪'
+                        }
+                      </div>
                       <div style={styles.storeMetaRow}>
                         {store.estimatedDeliveryMinutes && (
                           <span style={styles.storeTag}>🕐 {store.estimatedDeliveryMinutes}min</span>
@@ -364,8 +592,22 @@ const BuyerDashboard = () => {
                       </div>
                     </div>
 
-                    <h3 style={styles.storeTitle}>{store.name}</h3>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px' }}>
+                      <h3 style={{ ...styles.storeTitle, margin: 0 }}>{store.name}</h3>
+                      <span style={{
+                        fontSize: '10px', fontWeight: '600', padding: '2px 8px', borderRadius: '20px',
+                        backgroundColor: store.status === 'ACTIVE' ? '#05966920' : '#ef444420',
+                        color: store.status === 'ACTIVE' ? '#059669' : '#ef4444',
+                      }}>
+                        {store.status === 'ACTIVE' ? '🟢 Open' : '🔴 Closed'}
+                      </span>
+                    </div>
                     <p style={styles.storeAddress}>📍 {store.address}</p>
+                    {storeRatings[store.id]?.total > 0 && (
+                      <p style={{ fontSize: '11px', color: '#f59e0b', margin: '0 0 6px' }}>
+                        ⭐ {storeRatings[store.id].average} · {storeRatings[store.id].total} review{storeRatings[store.id].total !== 1 ? 's' : ''}
+                      </p>
+                    )}
                     {store.description && <p style={styles.storeDesc}>{store.description}</p>}
 
                     <div style={styles.storeActions}>
@@ -390,51 +632,55 @@ const BuyerDashboard = () => {
           </div>
         )}
 
-                {/* FEEDBACK TAB */}
+        {/* FEEDBACK TAB */}
         {activeTab === 'feedback' && (
           <div style={styles.tabContent}>
             <Feedback embedded={true} />
           </div>
         )}
-          {activeTab === 'chats' && (
-            <div style={styles.tabContent}>
-              <div style={styles.pageHeader}>
-                <div>
-                  <h1 style={styles.pageTitle}>💬 Messages</h1>
-                  <p style={styles.pageSubtitle}>{conversations.length} conversation{conversations.length !== 1 ? 's' : ''}</p>
-                </div>
+
+        {/* CHATS TAB */}
+        {activeTab === 'chats' && (
+          <div style={styles.tabContent}>
+            <div style={styles.pageHeader}>
+              <div>
+                <h1 style={styles.pageTitle}>💬 Messages</h1>
+                <p style={styles.pageSubtitle}>{conversations.length} conversation{conversations.length !== 1 ? 's' : ''}</p>
               </div>
-              {conversations.length === 0 ? (
-                <div style={styles.centerState}>
-                  <div style={{ fontSize: '48px', marginBottom: '12px' }}>💬</div>
-                  <p style={styles.stateTitle}>No conversations yet</p>
-                  <p style={styles.stateText}>Chat with a store from the Stores tab!</p>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {conversations.map(convo => (
-                    <div key={convo.ownerId}
-                      onClick={() => navigate(`/chat/${convo.ownerId}`)}
-                      style={{ backgroundColor: '#111114', border: `1px solid ${convo.unread > 0 ? '#3b82f640' : '#1f1f24'}`, borderRadius: '14px', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px', cursor: 'pointer', transition: 'border-color 0.2s' }}>
-                      <div style={{ width: '44px', height: '44px', borderRadius: '12px', backgroundColor: '#1c1c22', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', flexShrink: 0 }}>🏪</div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                          <p style={{ fontSize: '14px', fontWeight: '600', color: '#e4e4e7', margin: 0 }}>{convo.storeName}</p>
-                          <span style={{ fontSize: '11px', color: '#52525b' }}>{new Date(convo.lastMsg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                        </div>
-                        <p style={{ fontSize: '13px', color: '#71717a', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{convo.lastMsg.message}</p>
-                      </div>
-                      {convo.unread > 0 && (
-                        <span style={{ backgroundColor: '#3b82f6', color: '#fff', fontSize: '11px', fontWeight: '700', padding: '2px 7px', borderRadius: '999px', flexShrink: 0 }}>
-                          {convo.unread > 9 ? '9+' : convo.unread}
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
-          )}
+            {conversations.length === 0 ? (
+              <div style={styles.centerState}>
+                <div style={{ fontSize: '48px', marginBottom: '12px' }}>💬</div>
+                <p style={styles.stateTitle}>No conversations yet</p>
+                <p style={styles.stateText}>Chat with a store from the Stores tab!</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {conversations.map(convo => (
+                  <div key={convo.ownerId}
+                    onClick={() => navigate(`/chat/${convo.ownerId}`)}
+                    style={{ backgroundColor: '#111114', border: `1px solid ${convo.unread > 0 ? '#3b82f640' : '#1f1f24'}`, borderRadius: '14px', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px', cursor: 'pointer', transition: 'border-color 0.2s' }}>
+                    <div style={{ width: '44px', height: '44px', borderRadius: '12px', backgroundColor: '#1c1c22', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', flexShrink: 0 }}>🏪</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                        <p style={{ fontSize: '14px', fontWeight: '600', color: '#e4e4e7', margin: 0 }}>{convo.storeName}</p>
+                        <span style={{ fontSize: '11px', color: '#52525b' }}>{new Date(convo.lastMsg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+                      <p style={{ fontSize: '13px', color: '#71717a', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{convo.lastMsg.message}</p>
+                    </div>
+                    {convo.unread > 0 && (
+                      <span style={{ backgroundColor: '#3b82f6', color: '#fff', fontSize: '11px', fontWeight: '700', padding: '2px 7px', borderRadius: '999px', flexShrink: 0 }}>
+                        {convo.unread > 9 ? '9+' : convo.unread}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ORDERS TAB */}
         {activeTab === 'orders' && (
           <div style={styles.tabContent}>
             <div style={styles.pageHeader}>
@@ -511,9 +757,9 @@ const BuyerDashboard = () => {
           </div>
         )}
       </main>
-        
-        {receiptOrder && <OrderReceiptModal order={receiptOrder} onClose={() => setReceiptOrder(null)} />}
-        
+
+      {receiptOrder && <OrderReceiptModal order={receiptOrder} onClose={() => setReceiptOrder(null)} />}
+
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
         @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
@@ -535,7 +781,6 @@ const OrderCard = ({ order, expanded, onToggle, onReorder, onCancel, reordering,
 
   return (
     <div style={{ ...card.wrap, borderColor: isCancelled ? '#ef444428' : expanded ? '#f9731628' : '#1f1f24' }}>
-      {/* Header */}
       <div style={card.header} onClick={onToggle}>
         <div style={card.headerLeft}>
           <div style={card.idRow}>
@@ -553,14 +798,12 @@ const OrderCard = ({ order, expanded, onToggle, onReorder, onCancel, reordering,
         </div>
       </div>
 
-      {/* Body */}
       {expanded && (
         <div style={card.body}>
           {isCancelled ? (
             <div style={card.cancelled}>❌ This order was cancelled.</div>
           ) : (
             <>
-              {/* Timeline */}
               <div style={card.timeline}>
                 {STATUS_STEPS.map((step, idx) => {
                   const done = currentStep >= idx;
@@ -579,8 +822,6 @@ const OrderCard = ({ order, expanded, onToggle, onReorder, onCancel, reordering,
                   );
                 })}
               </div>
-
-              {/* ETA */}
               {!isDelivered && (
                 <div style={card.eta}>
                   <span style={{ fontSize: '15px' }}>🕐</span>
@@ -594,14 +835,12 @@ const OrderCard = ({ order, expanded, onToggle, onReorder, onCancel, reordering,
               )}
             </>
           )}
-
-          {/* Actions */}
           <div style={card.actions}>
-              <button style={card.chatBtn} onClick={() => navigate(`/chat/${order.storeOwnerId || order.storeId}`)}>💬 Chat with Store</button>
-              <button style={card.chatBtn} onClick={() => onReceipt(order)}>🧾 Receipt</button>
-              {order.status === 'PENDING' && (
-                  <button style={card.cancelBtn} onClick={() => onCancel(order.id)}>❌ Cancel Order</button>
-              )}
+            <button style={card.chatBtn} onClick={() => navigate(`/chat/${order.storeOwnerId || order.storeId}`)}>💬 Chat with Store</button>
+            <button style={card.chatBtn} onClick={() => onReceipt(order)}>🧾 Receipt</button>
+            {order.status === 'PENDING' && (
+              <button style={card.cancelBtn} onClick={() => onCancel(order.id)}>❌ Cancel Order</button>
+            )}
             {isDelivered && (
               <>
                 <button style={card.rateBtn} onClick={() => navigate('/buyer/ratings')}>⭐ Rate</button>
@@ -620,7 +859,6 @@ const OrderCard = ({ order, expanded, onToggle, onReorder, onCancel, reordering,
   );
 };
 
-// ── Order Card Styles ─────────────────────────────────────────────────────────
 const card = {
   wrap: { backgroundColor: '#111114', border: '1px solid #1f1f24', borderRadius: '14px', overflow: 'hidden', transition: 'border-color 0.2s', animation: 'fadeUp 0.4s ease both' },
   header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 20px', cursor: 'pointer', flexWrap: 'wrap', gap: '12px' },
@@ -645,14 +883,12 @@ const card = {
   chatBtn: { padding: '8px 14px', backgroundColor: '#131b2e', color: '#60a5fa', border: '1px solid #1e3056', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: '500', fontFamily: "'DM Sans', sans-serif" },
   rateBtn: { padding: '8px 14px', backgroundColor: '#1c1a10', color: '#f59e0b', border: '1px solid #2d2a18', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: '500', fontFamily: "'DM Sans', sans-serif" },
   feedbackBtn: { padding: '8px 14px', backgroundColor: '#1a1422', color: '#a78bfa', border: '1px solid #2a1e40', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: '500', fontFamily: "'DM Sans', sans-serif" },
- reorderBtn: { padding: '8px 14px', border: '1px solid', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: '600', fontFamily: "'DM Sans', sans-serif", transition: 'all 0.25s' },
-cancelBtn: { padding: '8px 14px', backgroundColor: '#2a1010', color: '#ef4444', border: '1px solid #ef444440', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: '500', fontFamily: "'DM Sans', sans-serif" },
+  reorderBtn: { padding: '8px 14px', border: '1px solid', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: '600', fontFamily: "'DM Sans', sans-serif", transition: 'all 0.25s' },
+  cancelBtn: { padding: '8px 14px', backgroundColor: '#2a1010', color: '#ef4444', border: '1px solid #ef444440', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: '500', fontFamily: "'DM Sans', sans-serif" },
 };
-// ── Dashboard Styles ──────────────────────────────────────────────────────────
+
 const styles = {
   root: { minHeight: '100vh', backgroundColor: '#090909', fontFamily: "'DM Sans', sans-serif", color: '#e4e4e7' },
-
-  // Nav
   nav: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 28px', height: '58px', backgroundColor: '#0e0e11', borderBottom: '1px solid #1a1a1f', position: 'sticky', top: 0, zIndex: 200, backdropFilter: 'blur(12px)' },
   navLeft: { display: 'flex', alignItems: 'center', gap: '8px' },
   navLogo: { fontSize: '18px', color: '#f97316' },
@@ -669,8 +905,6 @@ const styles = {
   profileAvatar: { width: '26px', height: '26px', borderRadius: '50%', backgroundColor: '#f97316', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '700', color: '#fff' },
   profileName: { fontSize: '12px', color: '#a1a1aa', fontWeight: '500' },
   logoutBtn: { padding: '6px 13px', backgroundColor: 'transparent', color: '#71717a', border: '1px solid #27272a', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontFamily: "'DM Sans', sans-serif", transition: 'all 0.15s' },
-
-  // Notification panel
   notifPanel: { position: 'absolute', top: '44px', right: 0, width: '348px', backgroundColor: '#0e0e11', border: '1px solid #1f1f24', borderRadius: '16px', boxShadow: '0 24px 64px rgba(0,0,0,0.7)', zIndex: 300, overflow: 'hidden', animation: 'slideDown 0.18s ease' },
   notifHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px 12px', borderBottom: '1px solid #1a1a1f' },
   notifHeaderTitle: { fontSize: '13px', fontWeight: '600', color: '#e4e4e7' },
@@ -684,8 +918,6 @@ const styles = {
   notifMsg: { fontSize: '11px', color: '#71717a', margin: '0 0 4px', lineHeight: '1.4' },
   notifTime: { fontSize: '10px', color: '#3f3f46', margin: 0 },
   notifDot: { width: '7px', height: '7px', borderRadius: '50%', flexShrink: 0, marginTop: '4px' },
-
-  // Layout
   main: { maxWidth: '1260px', margin: '0 auto', padding: '0 28px 60px' },
   tabContent: { paddingTop: '32px' },
   pageHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '28px', flexWrap: 'wrap', gap: '16px' },
@@ -699,8 +931,6 @@ const styles = {
   clearSearch: { background: 'none', border: 'none', color: '#52525b', cursor: 'pointer', fontSize: '13px', padding: 0 },
   refreshTime: { fontSize: '11px', color: '#3f3f46' },
   refreshBtn: { padding: '7px 14px', backgroundColor: '#111114', color: '#a1a1aa', border: '1px solid #1f1f24', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontFamily: "'DM Sans', sans-serif" },
-
-  // Store grid
   storeGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(272px, 1fr))', gap: '18px' },
   storeCard: { backgroundColor: '#111114', border: '1px solid #1f1f24', borderRadius: '16px', padding: '20px', cursor: 'pointer', transition: 'border-color 0.2s, transform 0.2s', animation: 'fadeUp 0.4s ease both' },
   storeCardTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' },
@@ -714,16 +944,12 @@ const styles = {
   storeActions: { display: 'flex', gap: '8px' },
   shopBtn: { flex: 1, padding: '9px', backgroundColor: '#f97316', color: '#fff', border: 'none', borderRadius: '9px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', fontFamily: "'DM Sans', sans-serif" },
   storeIconBtn: { width: '36px', height: '36px', backgroundColor: '#1c1c22', border: '1px solid #27272a', borderRadius: '9px', cursor: 'pointer', fontSize: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.15s' },
-
-  // Orders
   orderSection: { marginBottom: '28px' },
   orderSectionHeader: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' },
   orderSectionDot: { width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#ef4444', animation: 'pulse 2s infinite', display: 'inline-block' },
   orderSectionTitle: { fontSize: '14px', fontWeight: '600', color: '#a1a1aa' },
   orderSectionCount: { backgroundColor: '#1f1f24', color: '#52525b', fontSize: '11px', padding: '2px 8px', borderRadius: '20px' },
   ordersList: { display: 'flex', flexDirection: 'column', gap: '10px' },
-
-  // States
   centerState: { display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '100px 0', textAlign: 'center' },
   spinner: { width: '28px', height: '28px', border: '2px solid #1f1f24', borderTop: '2px solid #f97316', borderRadius: '50%', animation: 'spin 0.8s linear infinite', marginBottom: '16px' },
   stateTitle: { fontSize: '15px', fontWeight: '600', color: '#52525b', margin: '0 0 6px' },

@@ -53,6 +53,34 @@ public class AuthService {
                 .build();
     }
 
+    public AuthDTO.AuthResponse completeOAuthProfile(AuthDTO.CompleteProfileRequest request) {
+        User user = userRepository.findById(request.getUserId())
+                .orElseThrow(() -> new BadRequestException("User not found."));
+
+        if (userRepository.existsByUsername(request.getUsername()) 
+                && !user.getUsername().equals(request.getUsername()))
+            throw new BadRequestException("Username is already taken.");
+
+        user.setUsername(request.getUsername());
+        user.setRole(User.Role.valueOf(request.getRole()));
+        userRepository.save(user);
+
+        String token = jwtUtils.generateToken(
+                user.getUsername(),
+                user.getId(),
+                user.getRole().name()
+        );
+
+        return AuthDTO.AuthResponse.builder()
+                .accessToken(token)
+                .tokenType("Bearer")
+                .userId(user.getId())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .role(user.getRole().name())
+                .build();
+    }
+
     public AuthDTO.AuthResponse login(AuthDTO.LoginRequest request) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
