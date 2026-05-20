@@ -49,109 +49,264 @@ const CompleteProfile = () => {
   };
 
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        <h2 style={styles.title}>Complete Your Profile</h2>
-        <p style={styles.subtitle}>Just a couple things before you get started</p>
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Libre+Baskerville:wght@400;700&display=swap');
 
-        <label style={styles.label}>Username</label>
-        <input
-          style={styles.input}
-          value={username}
-          onChange={e => setUsername(e.target.value)}
-          placeholder="Choose a username"
-        />
+        .cp-root * { box-sizing: border-box; }
 
-        <label style={styles.label}>How will you use NearBuy?</label>
-        <div style={styles.roleRow}>
-          <div
-            style={{ ...styles.roleCard, ...(role === 'buyer' ? styles.roleCardActive : {}) }}
-            onClick={() => setRole('buyer')}
-          >
-            <span style={styles.roleIcon}>🛒</span>
-            <span style={styles.roleName}>Buyer</span>
-            <span style={styles.roleDesc}>Shop from local stores</span>
+        .cp-root {
+          min-height: 100vh;
+          background-color: #f7f5f1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-family: 'DM Sans', system-ui, sans-serif;
+          padding: 24px;
+        }
+
+        .cp-card {
+          background: #ffffff;
+          border: 1px solid #e7e5e4;
+          border-radius: 16px;
+          padding: 40px;
+          width: 100%;
+          max-width: 480px;
+          box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+          display: flex;
+          flex-direction: column;
+          gap: 0;
+        }
+
+        .cp-logo-row {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          margin-bottom: 28px;
+        }
+
+        .cp-logo-box {
+          width: 36px;
+          height: 36px;
+          border-radius: 10px;
+          background-color: #0f172a;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 16px;
+          font-weight: 700;
+          color: #ffffff;
+        }
+
+        .cp-logo-text {
+          font-family: 'Libre Baskerville', Georgia, serif;
+          font-size: 18px;
+          font-weight: 700;
+          color: #0f172a;
+          letter-spacing: -0.3px;
+        }
+
+        .cp-title {
+          font-family: 'Libre Baskerville', Georgia, serif;
+          font-size: 22px;
+          font-weight: 700;
+          color: #0f172a;
+          margin: 0 0 6px;
+          letter-spacing: -0.3px;
+        }
+
+        .cp-subtitle {
+          font-size: 13px;
+          color: #64748b;
+          margin: 0 0 28px;
+        }
+
+        .cp-field {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          margin-bottom: 20px;
+        }
+
+        .cp-label {
+          font-size: 10px;
+          font-weight: 600;
+          color: #64748b;
+          letter-spacing: 0.8px;
+          text-transform: uppercase;
+        }
+
+        .cp-input {
+          width: 100%;
+          padding: 12px 14px;
+          background: #faf9f7;
+          border: 1px solid #e7e5e4;
+          border-radius: 10px;
+          color: #1e293b;
+          font-size: 14px;
+          font-family: 'DM Sans', system-ui, sans-serif;
+          outline: none;
+          transition: border-color 0.15s;
+        }
+
+        .cp-input:focus {
+          border-color: #1e4d3a;
+        }
+
+        .cp-input::placeholder {
+          color: #94a3b8;
+        }
+
+        .cp-role-row {
+          display: flex;
+          gap: 12px;
+          margin-bottom: 24px;
+        }
+
+        .cp-role-card {
+          flex: 1;
+          background: #faf9f7;
+          border: 1px solid #e7e5e4;
+          border-radius: 12px;
+          padding: 20px 14px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 6px;
+          cursor: pointer;
+          transition: all 0.15s ease;
+        }
+
+        .cp-role-card:hover {
+          border-color: #c5d9ce;
+          background: #f0f7f4;
+        }
+
+        .cp-role-card.active {
+          border-color: #1e4d3a;
+          background: #eef4f1;
+          border-width: 1.5px;
+        }
+
+        .cp-role-icon {
+          font-size: 28px;
+          line-height: 1;
+          margin-bottom: 2px;
+        }
+
+        .cp-role-name {
+          font-size: 13px;
+          font-weight: 600;
+          color: #0f172a;
+        }
+
+        .cp-role-desc {
+          font-size: 11px;
+          color: #64748b;
+          text-align: center;
+          line-height: 1.4;
+        }
+
+        .cp-error {
+          font-size: 13px;
+          color: #dc2626;
+          background: #fef2f2;
+          border: 1px solid #fecaca;
+          border-radius: 8px;
+          padding: 10px 14px;
+          margin-bottom: 16px;
+        }
+
+        .cp-btn {
+          width: 100%;
+          padding: 13px;
+          background: #1e4d3a;
+          color: #ffffff;
+          border: none;
+          border-radius: 10px;
+          font-size: 14px;
+          font-weight: 600;
+          font-family: 'DM Sans', system-ui, sans-serif;
+          cursor: pointer;
+          transition: all 0.15s ease;
+          letter-spacing: 0.1px;
+        }
+
+        .cp-btn:hover:not(:disabled) {
+          background: #174032;
+        }
+
+        .cp-btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        .cp-divider {
+          height: 1px;
+          background: #f5f5f4;
+          margin: 20px 0;
+        }
+      `}</style>
+
+      <div className="cp-root">
+        <div className="cp-card">
+
+          {/* Logo */}
+          <div className="cp-logo-row">
+            <div className="cp-logo-box">N</div>
+            <span className="cp-logo-text">NearBuy</span>
           </div>
-          <div
-            style={{ ...styles.roleCard, ...(role === 'store_owner' ? styles.roleCardActive : {}) }}
-            onClick={() => setRole('store_owner')}
-          >
-            <span style={styles.roleIcon}>🏪</span>
-            <span style={styles.roleName}>Store Owner</span>
-            <span style={styles.roleDesc}>Sell your products</span>
+
+          {/* Heading */}
+          <h2 className="cp-title">Complete your profile</h2>
+          <p className="cp-subtitle">Just a couple things before you get started</p>
+
+          {/* Username */}
+          <div className="cp-field">
+            <label className="cp-label">Username</label>
+            <input
+              className="cp-input"
+              value={username}
+              onChange={e => setUsername(e.target.value)}
+              placeholder="Choose a username"
+            />
           </div>
+
+          {/* Role */}
+          <div className="cp-field">
+            <label className="cp-label">How will you use NearBuy?</label>
+            <div className="cp-role-row">
+              <div
+                className={`cp-role-card ${role === 'buyer' ? 'active' : ''}`}
+                onClick={() => setRole('buyer')}
+              >
+                <span className="cp-role-icon">🛒</span>
+                <span className="cp-role-name">Buyer</span>
+                <span className="cp-role-desc">Shop from local stores</span>
+              </div>
+              <div
+                className={`cp-role-card ${role === 'store_owner' ? 'active' : ''}`}
+                onClick={() => setRole('store_owner')}
+              >
+                <span className="cp-role-icon">🏪</span>
+                <span className="cp-role-name">Store Owner</span>
+                <span className="cp-role-desc">Sell your products</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Error */}
+          {error && <p className="cp-error">{error}</p>}
+
+          {/* Submit */}
+          <button className="cp-btn" onClick={handleSubmit} disabled={loading}>
+            {loading ? 'Saving...' : 'Get Started'}
+          </button>
+
         </div>
-
-        {error && <p style={styles.error}>{error}</p>}
-
-        <button style={styles.button} onClick={handleSubmit} disabled={loading}>
-          {loading ? 'Saving...' : 'Get Started'}
-        </button>
       </div>
-    </div>
+    </>
   );
-};
-
-const styles = {
-  container: {
-    minHeight: '100vh',
-    background: '#0f1117',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  card: {
-    background: '#1a1d2e',
-    borderRadius: '16px',
-    padding: '40px',
-    width: '100%',
-    maxWidth: '480px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '12px',
-  },
-  title: { color: '#fff', fontSize: '24px', fontWeight: 700, margin: 0 },
-  subtitle: { color: '#888', fontSize: '14px', margin: 0 },
-  label: { color: '#aaa', fontSize: '12px', fontWeight: 600, letterSpacing: '0.05em' },
-  input: {
-    background: '#0f1117',
-    border: '1px solid #2a2d3e',
-    borderRadius: '8px',
-    padding: '12px 16px',
-    color: '#fff',
-    fontSize: '14px',
-    outline: 'none',
-  },
-  roleRow: { display: 'flex', gap: '12px' },
-  roleCard: {
-    flex: 1,
-    background: '#0f1117',
-    border: '2px solid #2a2d3e',
-    borderRadius: '12px',
-    padding: '20px',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: '6px',
-    cursor: 'pointer',
-    transition: 'border-color 0.2s',
-  },
-  roleCardActive: { borderColor: '#4f6ef7' },
-  roleIcon: { fontSize: '28px' },
-  roleName: { color: '#fff', fontWeight: 600, fontSize: '14px' },
-  roleDesc: { color: '#888', fontSize: '12px', textAlign: 'center' },
-  error: { color: '#ff4d4f', fontSize: '13px', margin: 0 },
-  button: {
-    background: '#4f6ef7',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '8px',
-    padding: '14px',
-    fontSize: '15px',
-    fontWeight: 600,
-    cursor: 'pointer',
-    marginTop: '8px',
-  },
 };
 
 export default CompleteProfile;

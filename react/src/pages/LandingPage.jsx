@@ -1,662 +1,552 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
+const Icon = ({ children, className = '' }) => (
+  <svg
+    className={`w-5 h-5 ${className}`}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.75"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden
+  >
+    {children}
+  </svg>
+);
+
+const MapPin = () => (
+  <Icon>
+    <path d="M12 21s7-4.5 7-11a7 7 0 1 0-14 0c0 6.5 7 11 7 11z" />
+    <circle cx="12" cy="10" r="2.5" />
+  </Icon>
+);
+
+const Store = () => (
+  <Icon>
+    <path d="M3 9l9-6 9 6v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9z" />
+    <path d="M9 21V12h6v9" />
+  </Icon>
+);
+
+const Truck = () => (
+  <Icon>
+    <path d="M14 18H4v-8h11v8z" />
+    <path d="M14 10h3l3 3v5h-6" />
+    <circle cx="7" cy="18" r="2" />
+    <circle cx="17" cy="18" r="2" />
+  </Icon>
+);
+
+const Message = () => (
+  <Icon>
+    <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8z" />
+  </Icon>
+);
+
+const Star = ({ filled }) => (
+  <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" aria-hidden>
+    <path
+      fill={filled ? 'currentColor' : 'none'}
+      stroke="currentColor"
+      strokeWidth="1.5"
+      d="M10 2.5l2.2 4.5 5 .7-3.6 3.5.9 5-4.5-2.4-4.5 2.4.9-5-3.6-3.5 5-.7L10 2.5z"
+    />
+  </svg>
+);
+
+const Check = () => (
+  <Icon className="w-4 h-4 text-emerald-700">
+    <path d="M20 6L9 17l-5-5" />
+  </Icon>
+);
+
+const Award = () => (
+  <Icon>
+    <path d="M12 15l-3.2 1.7.6-3.6-2.7-2.3 3.9-.3L12 6l1.4 4.5 3.9.3-2.7 2.3.6 3.6L12 15z" />
+    <circle cx="12" cy="12" r="9" />
+  </Icon>
+);
+
+const features = [
+  {
+    title: 'Browse local stores',
+    desc: 'See what shops around Vigan have in stock before you leave home.',
+    Icon: Store,
+  },
+  {
+    title: 'Quick delivery',
+    desc: 'Most orders reach buyers within the hour, depending on the store.',
+    Icon: Truck,
+  },
+  {
+    title: 'Chat with sellers',
+    desc: 'Ask about availability, substitutions, or pickup times in one thread.',
+    Icon: Message,
+  },
+  {
+    title: 'Honest reviews',
+    desc: 'Ratings from real orders help you choose stores you can trust.',
+    Icon: Award,
+  },
+];
+
+const steps = [
+  { num: '1', title: 'Create an account', desc: 'Register as a buyer or store owner with a few details.' },
+  { num: '2', title: 'Pick a store', desc: 'Browse listings and open a shop profile that fits what you need.' },
+  { num: '3', title: 'Place your order', desc: 'Add items, confirm delivery details, and pay when you check out.' },
+  { num: '4', title: 'Track delivery', desc: 'Follow status updates until your order arrives.' },
+];
+
+const testimonials = [
+  {
+    name: 'Maria Santos',
+    role: 'Buyer, Vigan',
+    text: 'I stopped making separate trips for groceries. One app, a few taps, and it shows up.',
+    avatar: 'MS',
+  },
+  {
+    name: 'Juan dela Cruz',
+    role: 'Store owner',
+    text: 'We reach customers who never walked past our storefront. Orders are easier to manage now.',
+    avatar: 'JD',
+  },
+  {
+    name: 'Ana Reyes',
+    role: 'Buyer',
+    text: 'Being able to message the store before checkout saved me from wrong sizes twice.',
+    avatar: 'AR',
+  },
+];
+
 const LandingPage = () => {
   const [scrolled, setScrolled] = useState(false);
-  const [activeFeature, setActiveFeature] = useState(0);
 
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 30);
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    const onScroll = () => setScrolled(window.scrollY > 24);
+    window.addEventListener('scroll', onScroll);
+    return () => window.removeEventListener('scroll', onScroll);
   }, []);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setActiveFeature(prev => (prev + 1) % 4);
-    }, 2500);
-    return () => clearInterval(interval);
-  }, []);
-
-  const features = [
-    { icon: '🛒', title: 'Browse Local Stores', desc: 'Discover stores near you with fresh products daily.' },
-    { icon: '⚡', title: 'Fast Delivery', desc: 'Get your orders delivered in 30 minutes or less.' },
-    { icon: '💬', title: 'Live Chat', desc: 'Talk directly to store owners in real time.' },
-    { icon: '⭐', title: 'Ratings & Reviews', desc: 'Rate your experience and help others decide.' },
-  ];
-
-  const steps = [
-    { num: '01', title: 'Create Account', desc: 'Sign up as a buyer or store owner in seconds.' },
-    { num: '02', title: 'Browse Stores', desc: 'Find local stores and explore their products.' },
-    { num: '03', title: 'Place Order', desc: 'Add to cart and checkout with ease.' },
-    { num: '04', title: 'Get Delivered', desc: 'Receive your order fresh at your doorstep.' },
-  ];
-
-  const testimonials = [
-    { name: 'Maria Santos', role: 'Regular Buyer', text: 'NearBuy changed how I grocery shop. So fast and convenient!', avatar: 'M' },
-    { name: 'Juan dela Cruz', role: 'Store Owner', desc: 'My sales doubled since joining NearBuy. Great platform!', text: 'My sales doubled since joining NearBuy. Great platform!', avatar: 'J' },
-    { name: 'Ana Reyes', role: 'Regular Buyer', text: 'Love the chat feature. I can ask the store directly!', avatar: 'A' },
-  ];
 
   return (
-    <div style={s.root}>
-      {/* Background blobs */}
-      <div style={s.blob1} />
-      <div style={s.blob2} />
-      <div style={s.blob3} />
+    <div className="min-h-screen bg-[#f7f5f1] font-['DM_Sans',system-ui,sans-serif] text-slate-800 antialiased">
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap"
+      />
 
-      {/* NAV */}
-      <nav style={{ ...s.nav, ...(scrolled ? s.navScrolled : {}) }}>
-        <div style={s.navInner}>
-          <div style={s.logo}>
-            <div style={s.logoIcon}>N</div>
-            <span style={s.logoText}>NearBuy</span>
-          </div>
-          <div style={s.navLinks}>
-            <a href="#features" style={s.navLink}>Features</a>
-            <a href="#how" style={s.navLink}>How It Works</a>
-            <a href="#testimonials" style={s.navLink}>Reviews</a>
-          </div>
-          <div style={s.navActions}>
-            <Link to="/login" style={s.navLoginBtn}>Sign In</Link>
-            <Link to="/register" style={s.navRegisterBtn}>Get Started</Link>
+      <header
+        className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${
+          scrolled ? 'border-b border-stone-200/80 bg-[#f7f5f1]/90 backdrop-blur-md' : 'bg-transparent'
+        }`}
+      >
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4 md:px-8">
+          <Link to="/" className="flex items-center gap-2.5 no-underline">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900 text-sm font-bold text-white">
+              N
+            </span>
+            <span className="font-['Libre_Baskerville'] text-lg font-bold tracking-tight text-slate-900">
+              NearBuy
+            </span>
+          </Link>
+
+          <nav className="hidden items-center gap-8 md:flex">
+            <a href="#features" className="text-sm font-medium text-slate-600 hover:text-slate-900">
+              Features
+            </a>
+            <a href="#how" className="text-sm font-medium text-slate-600 hover:text-slate-900">
+              How it works
+            </a>
+            <a href="#reviews" className="text-sm font-medium text-slate-600 hover:text-slate-900">
+              Reviews
+            </a>
+          </nav>
+
+          <div className="flex items-center gap-2">
+            <Link
+              to="/login"
+              className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-700 no-underline hover:bg-stone-200/60"
+            >
+              Sign in
+            </Link>
+            <Link
+              to="/register"
+              className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white no-underline hover:bg-slate-800"
+            >
+              Get started
+            </Link>
           </div>
         </div>
-      </nav>
+      </header>
 
-      {/* HERO */}
-      <section style={s.hero}>
-        <div style={s.heroLeft}>
-          <div style={s.heroBadge}>
-            <span style={s.badgeDot} />
-            Local Delivery Platform · Vigan, Ilocos
-          </div>
-          <h1 style={s.heroTitle}>
-            Fresh & Fast,<br />
-            <span style={s.heroTitleAccent}>Delivered Near</span><br />
-            <span style={s.heroTitleAccent2}>You.</span>
-          </h1>
-          <p style={s.heroDesc}>
-            Order from local stores around you. Groceries, essentials, and more —
-            delivered straight to your door in minutes.
-          </p>
-          <div style={s.heroCtas}>
-            <Link to="/register" style={s.ctaPrimary}>Start Shopping →</Link>
-            <Link to="/register" style={s.ctaSecondary}>Sell on NearBuy</Link>
-          </div>
-          <div style={s.heroStats}>
-            {[['500+', 'Local Stores'], ['10k+', 'Happy Buyers'], ['30min', 'Avg Delivery']].map(([n, l]) => (
-              <div key={l} style={s.heroStat}>
-                <span style={s.heroStatNum}>{n}</span>
-                <span style={s.heroStatLabel}>{l}</span>
+      <main>
+        {/* Hero */}
+        <section className="relative overflow-hidden pt-28 pb-16 md:pt-36 md:pb-24">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(30,61,53,0.08),transparent)]" />
+          <div className="mx-auto grid max-w-6xl items-center gap-12 px-5 md:grid-cols-2 md:gap-16 md:px-8">
+            <div>
+              <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-stone-300/80 bg-white/70 px-3 py-1 text-xs font-medium uppercase tracking-wide text-slate-600">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
+                Vigan &amp; nearby
+              </p>
+              <h1 className="font-['Libre_Baskerville'] text-4xl font-bold leading-[1.15] text-slate-900 sm:text-5xl lg:text-[3.25rem]">
+                Local stores,
+                <br />
+                <span className="text-[#1e4d3a]">delivered nearby.</span>
+              </h1>
+              <p className="mt-5 max-w-md text-base leading-relaxed text-slate-600">
+                NearBuy connects you with neighborhood shops for groceries, essentials, and daily
+                needs—without the runaround.
+              </p>
+              <div className="mt-8 flex flex-wrap gap-3">
+                <Link
+                  to="/register"
+                  className="inline-flex items-center justify-center rounded-lg bg-[#1e4d3a] px-6 py-3 text-sm font-semibold text-white no-underline hover:bg-[#163d2f]"
+                >
+                  Start shopping
+                </Link>
+                <Link
+                  to="/register"
+                  className="inline-flex items-center justify-center rounded-lg border border-stone-300 bg-white px-6 py-3 text-sm font-semibold text-slate-800 no-underline hover:border-stone-400"
+                >
+                  List your store
+                </Link>
               </div>
-            ))}
-          </div>
-        </div>
+              <dl className="mt-12 flex flex-wrap gap-10 border-t border-stone-300/70 pt-8">
+                {[
+                  ['120+', 'Partner stores'],
+                  ['8k', 'Orders placed'],
+                  ['~45 min', 'Typical delivery'],
+                ].map(([value, label]) => (
+                  <div key={label}>
+                    <dt className="font-['Libre_Baskerville'] text-2xl font-bold text-slate-900">{value}</dt>
+                    <dd className="mt-0.5 text-sm text-slate-500">{label}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
 
-        <div style={s.heroRight}>
-          {/* Phone mockup */}
-          <div style={s.phoneMockup}>
-            <div style={s.phoneScreen}>
-              <div style={s.phoneHeader}>
-                <div style={s.phoneHeaderLeft}>
-                  <span style={s.phonePin}>📍</span>
-                  <span style={s.phoneLocation}>Vigan City</span>
+            {/* App preview */}
+            <div className="relative mx-auto w-full max-w-sm">
+              <div className="rounded-[2rem] border border-stone-300 bg-white p-4 shadow-[0_24px_48px_-12px_rgba(15,23,42,0.12)]">
+                <div className="mb-4 flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-sm font-semibold text-slate-800">
+                    <MapPin />
+                    <span>Vigan City</span>
+                  </div>
+                  <span className="flex h-8 w-8 items-center justify-center rounded-md bg-slate-900 text-xs font-bold text-white">
+                    N
+                  </span>
                 </div>
-                <div style={s.phoneAvatar}>N</div>
-              </div>
-              <div style={s.phoneBanner}>
-                <div>
-                  <div style={s.phoneBannerTag}>Limited Offer</div>
-                  <div style={s.phoneBannerTitle}>Free Delivery</div>
-                  <div style={s.phoneBannerSub}>on first order!</div>
+                <div className="mb-4 rounded-xl bg-[#1e4d3a] px-4 py-3.5 text-white">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-white/70">
+                    First order
+                  </p>
+                  <p className="mt-1 text-lg font-semibold">Free delivery</p>
+                  <p className="text-xs text-white/80">Within 3 km of the store</p>
                 </div>
-                <div style={s.phoneBannerEmoji}>🛵</div>
-              </div>
-              <div style={s.phoneSection}>Nearby Stores</div>
-              {[
-                { name: 'Balagbag Fresh', cat: 'Groceries', rating: '4.8', time: '20 min', color: '#dcfce7' },
-                { name: 'Vigan Deli', cat: 'Deli & Meats', rating: '4.6', time: '25 min', color: '#fef3c7' },
-              ].map((store) => (
-                <div key={store.name} style={s.phoneStoreCard}>
-                  <div style={{ ...s.phoneStoreImg, backgroundColor: store.color }}>🏪</div>
-                  <div style={s.phoneStoreInfo}>
-                    <div style={s.phoneStoreName}>{store.name}</div>
-                    <div style={s.phoneStoreMeta}>{store.cat}</div>
-                    <div style={s.phoneStoreBottom}>
-                      <span style={s.phoneStoreRating}>⭐ {store.rating}</span>
-                      <span style={s.phoneStoreDot}>·</span>
-                      <span style={s.phoneStoreTime}>🕐 {store.time}</span>
+                <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">
+                  Nearby stores
+                </p>
+                {[
+                  { name: 'Balagbag Fresh Market', cat: 'Groceries', rating: '4.8', time: '20 min', tint: 'bg-emerald-50 text-emerald-800' },
+                  { name: 'Vigan Deli & Meats', cat: 'Deli', rating: '4.6', time: '25 min', tint: 'bg-amber-50 text-amber-900' },
+                ].map((store) => (
+                  <div
+                    key={store.name}
+                    className="mb-2 flex items-center gap-3 rounded-xl border border-stone-200 bg-stone-50/80 p-3"
+                  >
+                    <div
+                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-xs font-bold ${store.tint}`}
+                    >
+                      {store.name.slice(0, 2).toUpperCase()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-slate-900">{store.name}</p>
+                      <p className="text-xs text-slate-500">{store.cat}</p>
+                      <p className="mt-0.5 flex items-center gap-1 text-xs text-slate-600">
+                        <span className="flex text-amber-600">
+                          {[1, 2, 3, 4, 5].map((i) => (
+                            <Star key={i} filled={i <= 4} />
+                          ))}
+                        </span>
+                        <span>{store.rating}</span>
+                        <span className="text-stone-400">·</span>
+                        <span>{store.time}</span>
+                      </p>
                     </div>
                   </div>
-                  <div style={s.phoneStoreArrow}>›</div>
-                </div>
+                ))}
+              </div>
+              <div className="absolute -left-4 bottom-8 hidden rounded-xl border border-stone-200 bg-white px-4 py-3 shadow-lg sm:block">
+                <p className="text-sm font-semibold text-slate-900">Order delivered</p>
+                <p className="text-xs text-slate-500">28 minutes ago</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Features */}
+        <section id="features" className="border-t border-stone-300/60 bg-white py-20 md:py-24">
+          <div className="mx-auto max-w-6xl px-5 md:px-8">
+            <p className="text-sm font-semibold uppercase tracking-wide text-[#1e4d3a]">Why NearBuy</p>
+            <h2 className="mt-2 max-w-lg font-['Libre_Baskerville'] text-3xl font-bold text-slate-900 md:text-4xl">
+              Built for how people actually shop locally
+            </h2>
+            <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+              {features.map(({ title, desc, Icon: FeatureIcon }) => (
+                <article
+                  key={title}
+                  className="rounded-2xl border border-stone-200 bg-[#faf9f7] p-6 transition-shadow hover:shadow-md"
+                >
+                  <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-white text-[#1e4d3a] shadow-sm ring-1 ring-stone-200">
+                    <FeatureIcon />
+                  </div>
+                  <h3 className="text-base font-semibold text-slate-900">{title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-600">{desc}</p>
+                </article>
               ))}
             </div>
           </div>
+        </section>
 
-          {/* Floating cards */}
-          <div style={s.floatCard1}>
-            <span style={s.floatCardIcon}>✅</span>
+        {/* How it works */}
+        <section id="how" className="py-20 md:py-24">
+          <div className="mx-auto grid max-w-6xl gap-12 px-5 md:grid-cols-2 md:items-start md:px-8">
             <div>
-              <div style={s.floatCardTitle}>Order Delivered!</div>
-              <div style={s.floatCardSub}>Just now · 28 mins</div>
+              <p className="text-sm font-semibold uppercase tracking-wide text-[#1e4d3a]">How it works</p>
+              <h2 className="mt-2 font-['Libre_Baskerville'] text-3xl font-bold text-slate-900 md:text-4xl">
+                Four steps from browse to doorstep
+              </h2>
+              <p className="mt-4 max-w-md text-slate-600">
+                Whether you are stocking the pantry or running a sari-sari store, the flow stays
+                straightforward.
+              </p>
+              <Link
+                to="/register"
+                className="mt-8 inline-flex rounded-lg bg-slate-900 px-6 py-3 text-sm font-semibold text-white no-underline hover:bg-slate-800"
+              >
+                Create free account
+              </Link>
+            </div>
+            <ol className="space-y-4">
+              {steps.map((step) => (
+                <li
+                  key={step.num}
+                  className="flex gap-4 rounded-2xl border border-stone-200 bg-white p-5"
+                >
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#1e4d3a] text-sm font-bold text-white">
+                    {step.num}
+                  </span>
+                  <div>
+                    <h3 className="font-semibold text-slate-900">{step.title}</h3>
+                    <p className="mt-1 text-sm leading-relaxed text-slate-600">{step.desc}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </section>
+
+        {/* Roles */}
+        <section className="border-y border-stone-300/60 bg-white py-20 md:py-24">
+          <div className="mx-auto max-w-6xl px-5 md:px-8">
+            <p className="text-center text-sm font-semibold uppercase tracking-wide text-[#1e4d3a]">
+              Join as
+            </p>
+            <h2 className="mt-2 text-center font-['Libre_Baskerville'] text-3xl font-bold text-slate-900 md:text-4xl">
+              Buyers and store owners use the same platform
+            </h2>
+            <div className="mt-12 grid gap-6 md:grid-cols-2">
+              <article className="flex flex-col overflow-hidden rounded-2xl border border-stone-200">
+                <div className="border-b border-stone-200 bg-[#eef4f1] px-8 py-10">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white text-[#1e4d3a] shadow-sm">
+                    <Store />
+                  </div>
+                </div>
+                <div className="flex flex-1 flex-col p-8">
+                  <h3 className="font-['Libre_Baskerville'] text-xl font-bold text-slate-900">For buyers</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                    Shop from stores you already know, with delivery to your address or a nearby
+                    landmark.
+                  </p>
+                  <ul className="mt-5 flex-1 space-y-2.5">
+                    {['Browse stores by category', 'Track order status', 'Message sellers', 'Leave ratings'].map(
+                      (item) => (
+                        <li key={item} className="flex items-center gap-2 text-sm text-slate-700">
+                          <Check />
+                          {item}
+                        </li>
+                      )
+                    )}
+                  </ul>
+                  <Link
+                    to="/register"
+                    className="mt-6 inline-flex w-fit rounded-lg bg-[#1e4d3a] px-5 py-2.5 text-sm font-semibold text-white no-underline hover:bg-[#163d2f]"
+                  >
+                    Shop now
+                  </Link>
+                </div>
+              </article>
+
+              <article className="flex flex-col overflow-hidden rounded-2xl border border-stone-200">
+                <div className="border-b border-stone-200 bg-[#f5f0e8] px-8 py-10">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white text-amber-900 shadow-sm">
+                    <Truck />
+                  </div>
+                </div>
+                <div className="flex flex-1 flex-col p-8">
+                  <h3 className="font-['Libre_Baskerville'] text-xl font-bold text-slate-900">
+                    For store owners
+                  </h3>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                    Put your catalog online, take orders in one place, and reply when customers have
+                    questions.
+                  </p>
+                  <ul className="mt-5 flex-1 space-y-2.5">
+                    {['List products and prices', 'Manage incoming orders', 'Chat with buyers', 'View sales history'].map(
+                      (item) => (
+                        <li key={item} className="flex items-center gap-2 text-sm text-slate-700">
+                          <Check />
+                          {item}
+                        </li>
+                      )
+                    )}
+                  </ul>
+                  <Link
+                    to="/register"
+                    className="mt-6 inline-flex w-fit rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white no-underline hover:bg-slate-800"
+                  >
+                    Start selling
+                  </Link>
+                </div>
+              </article>
             </div>
           </div>
-          <div style={s.floatCard2}>
-            <span style={s.floatCard2Icon}>⭐</span>
-            <div style={s.floatCard2Text}>4.9 / 5.0</div>
-            <div style={s.floatCard2Sub}>Avg Rating</div>
-          </div>
-        </div>
-      </section>
+        </section>
 
-      {/* FEATURES */}
-      <section id="features" style={s.section}>
-        <div style={s.sectionBadge}>Why NearBuy</div>
-        <h2 style={s.sectionTitle}>Everything you need,<br />in one place</h2>
-        <p style={s.sectionDesc}>From browsing to delivery, we've got the whole experience covered.</p>
-        <div style={s.featuresGrid}>
-          {features.map((f, i) => (
-            <div
-              key={i}
-              style={{ ...s.featureCard, ...(activeFeature === i ? s.featureCardActive : {}) }}
-              onMouseEnter={() => setActiveFeature(i)}
+        {/* Reviews */}
+        <section id="reviews" className="py-20 md:py-24">
+          <div className="mx-auto max-w-6xl px-5 md:px-8">
+            <p className="text-sm font-semibold uppercase tracking-wide text-[#1e4d3a]">Reviews</p>
+            <h2 className="mt-2 font-['Libre_Baskerville'] text-3xl font-bold text-slate-900 md:text-4xl">
+              From people in the area
+            </h2>
+            <div className="mt-12 grid gap-5 md:grid-cols-3">
+              {testimonials.map((t) => (
+                <blockquote
+                  key={t.name}
+                  className="flex flex-col rounded-2xl border border-stone-200 bg-white p-6"
+                >
+                  <div className="mb-3 flex gap-0.5 text-amber-600">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <Star key={i} filled />
+                    ))}
+                  </div>
+                  <p className="flex-1 text-sm leading-relaxed text-slate-700">&ldquo;{t.text}&rdquo;</p>
+                  <footer className="mt-5 flex items-center gap-3 border-t border-stone-100 pt-5">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-stone-200 text-xs font-bold text-slate-700">
+                      {t.avatar}
+                    </span>
+                    <div>
+                      <cite className="not-italic text-sm font-semibold text-slate-900">{t.name}</cite>
+                      <p className="text-xs text-slate-500">{t.role}</p>
+                    </div>
+                  </footer>
+                </blockquote>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* CTA */}
+        <section className="mx-5 mb-20 max-w-6xl rounded-2xl bg-slate-900 px-6 py-14 text-center md:mx-auto md:px-12">
+          <h2 className="font-['Libre_Baskerville'] text-2xl font-bold text-white md:text-3xl">
+            Ready to try NearBuy?
+          </h2>
+          <p className="mx-auto mt-3 max-w-md text-sm text-slate-400">
+            Set up an account in a few minutes. No card required to browse stores.
+          </p>
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            <Link
+              to="/register"
+              className="rounded-lg bg-white px-6 py-3 text-sm font-semibold text-slate-900 no-underline hover:bg-stone-100"
             >
-              <div style={s.featureIcon}>{f.icon}</div>
-              <h3 style={s.featureTitle}>{f.title}</h3>
-              <p style={s.featureDesc}>{f.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* HOW IT WORKS */}
-      <section id="how" style={s.howSection}>
-        <div style={s.howInner}>
-          <div style={s.howLeft}>
-            <div style={s.sectionBadge}>How It Works</div>
-            <h2 style={s.sectionTitle}>Order in just<br />4 simple steps</h2>
-            <p style={s.sectionDesc}>Getting started with NearBuy is fast and easy.</p>
-            <Link to="/register" style={s.ctaPrimary}>Get Started Free →</Link>
+              Create account
+            </Link>
+            <Link
+              to="/login"
+              className="rounded-lg border border-slate-600 px-6 py-3 text-sm font-semibold text-white no-underline hover:border-slate-500"
+            >
+              Sign in
+            </Link>
           </div>
-          <div style={s.howRight}>
-            {steps.map((step, i) => (
-              <div key={i} style={s.stepCard}>
-                <div style={s.stepNum}>{step.num}</div>
-                <div style={s.stepContent}>
-                  <div style={s.stepTitle}>{step.title}</div>
-                  <div style={s.stepDesc}>{step.desc}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+        </section>
+      </main>
 
-      {/* ROLES SECTION */}
-      <section style={s.section}>
-        <div style={s.sectionBadge}>Join As</div>
-        <h2 style={s.sectionTitle}>Made for everyone<br />in the community</h2>
-        <div style={s.rolesGrid}>
-          <div style={s.roleCard}>
-            <div style={{ ...s.roleCardTop, background: 'linear-gradient(135deg, #dbeafe, #bfdbfe)' }}>
-              <span style={s.roleEmoji}>🛒</span>
-            </div>
-            <div style={s.roleCardBody}>
-              <h3 style={s.roleCardTitle}>For Buyers</h3>
-              <p style={s.roleCardDesc}>Shop from local stores near you. Get fresh groceries, daily essentials, and more delivered fast.</p>
-              <ul style={s.roleList}>
-                <li style={s.roleListItem}>✔ Browse nearby stores</li>
-                <li style={s.roleListItem}>✔ Track your orders live</li>
-                <li style={s.roleListItem}>✔ Chat with store owners</li>
-                <li style={s.roleListItem}>✔ Rate your experience</li>
+      <footer className="border-t border-stone-300 bg-white">
+        <div className="mx-auto flex max-w-6xl flex-col gap-10 px-5 py-12 md:flex-row md:justify-between md:px-8">
+          <div className="max-w-xs">
+            <Link to="/" className="flex items-center gap-2.5 no-underline">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900 text-xs font-bold text-white">
+                N
+              </span>
+              <span className="font-['Libre_Baskerville'] font-bold text-slate-900">NearBuy</span>
+            </Link>
+            <p className="mt-3 text-sm leading-relaxed text-slate-500">
+              Local delivery for Vigan and nearby communities.
+            </p>
+          </div>
+          <div className="flex gap-16">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-900">Platform</p>
+              <ul className="mt-3 space-y-2">
+                <li>
+                  <Link to="/register" className="text-sm text-slate-600 no-underline hover:text-slate-900">
+                    For buyers
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/register" className="text-sm text-slate-600 no-underline hover:text-slate-900">
+                    For store owners
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/login" className="text-sm text-slate-600 no-underline hover:text-slate-900">
+                    Sign in
+                  </Link>
+                </li>
               </ul>
-              <Link to="/register" style={s.roleBtn}>Shop Now →</Link>
             </div>
-          </div>
-          <div style={s.roleCard}>
-            <div style={{ ...s.roleCardTop, background: 'linear-gradient(135deg, #dcfce7, #bbf7d0)' }}>
-              <span style={s.roleEmoji}>🏪</span>
-            </div>
-            <div style={s.roleCardBody}>
-              <h3 style={s.roleCardTitle}>For Store Owners</h3>
-              <p style={s.roleCardDesc}>Reach more customers in your area. List your products, manage orders, and grow your business.</p>
-              <ul style={s.roleList}>
-                <li style={s.roleListItem}>✔ List unlimited products</li>
-                <li style={s.roleListItem}>✔ Manage orders easily</li>
-                <li style={s.roleListItem}>✔ Chat with buyers</li>
-                <li style={s.roleListItem}>✔ Track your earnings</li>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-900">Site</p>
+              <ul className="mt-3 space-y-2">
+                <li>
+                  <a href="#features" className="text-sm text-slate-600 no-underline hover:text-slate-900">
+                    Features
+                  </a>
+                </li>
+                <li>
+                  <a href="#how" className="text-sm text-slate-600 no-underline hover:text-slate-900">
+                    How it works
+                  </a>
+                </li>
+                <li>
+                  <a href="#reviews" className="text-sm text-slate-600 no-underline hover:text-slate-900">
+                    Reviews
+                  </a>
+                </li>
               </ul>
-              <Link to="/register" style={{ ...s.roleBtn, background: 'linear-gradient(135deg, #22c55e, #16a34a)' }}>Start Selling →</Link>
             </div>
           </div>
         </div>
-      </section>
-
-      {/* TESTIMONIALS */}
-      <section id="testimonials" style={s.testimonialsSection}>
-        <div style={s.sectionBadge}>Reviews</div>
-        <h2 style={s.sectionTitle}>What our users say</h2>
-        <div style={s.testimonialsGrid}>
-          {testimonials.map((t, i) => (
-            <div key={i} style={s.testimonialCard}>
-              <div style={s.testimonialStars}>⭐⭐⭐⭐⭐</div>
-              <p style={s.testimonialText}>"{t.text}"</p>
-              <div style={s.testimonialAuthor}>
-                <div style={s.testimonialAvatar}>{t.avatar}</div>
-                <div>
-                  <div style={s.testimonialName}>{t.name}</div>
-                  <div style={s.testimonialRole}>{t.role}</div>
-                </div>
-              </div>
-            </div>
-          ))}
+        <div className="border-t border-stone-200 py-5 text-center text-xs text-slate-500">
+          © {new Date().getFullYear()} NearBuy. All rights reserved.
         </div>
-      </section>
-
-      {/* CTA BANNER */}
-      <section style={s.ctaBanner}>
-        <div style={s.ctaBannerInner}>
-          <h2 style={s.ctaBannerTitle}>Ready to get started?</h2>
-          <p style={s.ctaBannerDesc}>Join thousands of buyers and store owners in your community.</p>
-          <div style={s.ctaBannerBtns}>
-            <Link to="/register" style={s.ctaBannerPrimary}>Create Free Account</Link>
-            <Link to="/login" style={s.ctaBannerSecondary}>Sign In</Link>
-          </div>
-        </div>
-      </section>
-
-      {/* FOOTER */}
-      <footer style={s.footer}>
-        <div style={s.footerInner}>
-          <div style={s.footerBrand}>
-            <div style={s.logo}>
-              <div style={s.logoIcon}>N</div>
-              <span style={s.logoText}>NearBuy</span>
-            </div>
-            <p style={s.footerBrandDesc}>Fast & fresh delivery from local stores near you.</p>
-          </div>
-          <div style={s.footerLinks}>
-            <div style={s.footerLinkGroup}>
-              <div style={s.footerLinkTitle}>Platform</div>
-              <Link to="/register" style={s.footerLink}>For Buyers</Link>
-              <Link to="/register" style={s.footerLink}>For Store Owners</Link>
-              <Link to="/login" style={s.footerLink}>Sign In</Link>
-            </div>
-            <div style={s.footerLinkGroup}>
-              <div style={s.footerLinkTitle}>Company</div>
-              <a href="#features" style={s.footerLink}>Features</a>
-              <a href="#how" style={s.footerLink}>How It Works</a>
-              <a href="#testimonials" style={s.footerLink}>Reviews</a>
-            </div>
-          </div>
-        </div>
-        <div style={s.footerBottom}>© 2025 NearBuy. All rights reserved.</div>
       </footer>
-
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Clash+Display:wght@400;500;600;700&family=Sora:wght@300;400;500;600&display=swap');
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        html { scroll-behavior: smooth; }
-        body { font-family: 'Sora', sans-serif; }
-        @keyframes float { 0%,100% { transform: translateY(0px); } 50% { transform: translateY(-12px); } }
-        @keyframes floatDelay { 0%,100% { transform: translateY(0px); } 50% { transform: translateY(-8px); } }
-        @keyframes fadeUp { from { opacity:0; transform:translateY(30px); } to { opacity:1; transform:translateY(0); } }
-        @keyframes blob { 0%,100% { border-radius: 60% 40% 30% 70%/60% 30% 70% 40%; } 50% { border-radius: 30% 60% 70% 40%/50% 60% 30% 60%; } }
-      `}</style>
     </div>
   );
-};
-
-const s = {
-  root: {
-    minHeight: '100vh',
-    backgroundColor: '#f8faff',
-    fontFamily: "'Sora', sans-serif",
-    position: 'relative',
-    overflowX: 'hidden',
-  },
-  blob1: {
-    position: 'fixed', top: '-100px', right: '-100px',
-    width: '500px', height: '500px', borderRadius: '60% 40% 30% 70%/60% 30% 70% 40%',
-    background: 'radial-gradient(circle, rgba(59,130,246,0.12) 0%, transparent 70%)',
-    animation: 'blob 8s ease-in-out infinite', pointerEvents: 'none', zIndex: 0,
-  },
-  blob2: {
-    position: 'fixed', bottom: '100px', left: '-150px',
-    width: '600px', height: '600px', borderRadius: '30% 60% 70% 40%/50% 60% 30% 60%',
-    background: 'radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%)',
-    animation: 'blob 10s ease-in-out infinite reverse', pointerEvents: 'none', zIndex: 0,
-  },
-  blob3: {
-    position: 'fixed', top: '50%', left: '50%',
-    width: '400px', height: '400px', borderRadius: '50%',
-    background: 'radial-gradient(circle, rgba(34,197,94,0.06) 0%, transparent 70%)',
-    transform: 'translate(-50%,-50%)',
-    pointerEvents: 'none', zIndex: 0,
-  },
-
-  // NAV
-  nav: {
-    position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,
-    padding: '16px 0',
-    transition: 'all 0.3s ease',
-  },
-  navScrolled: {
-    background: 'rgba(255,255,255,0.85)',
-    backdropFilter: 'blur(20px)',
-    boxShadow: '0 1px 30px rgba(0,0,0,0.08)',
-    padding: '12px 0',
-  },
-  navInner: {
-    maxWidth: '1200px', margin: '0 auto', padding: '0 40px',
-    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-  },
-  logo: { display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none' },
-  logoIcon: {
-    width: '36px', height: '36px', borderRadius: '10px',
-    background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    color: '#fff', fontWeight: '800', fontSize: '16px',
-    boxShadow: '0 4px 12px rgba(59,130,246,0.35)',
-  },
-  logoText: { fontSize: '20px', fontWeight: '700', color: '#1e293b', fontFamily: "'Clash Display', sans-serif" },
-  navLinks: { display: 'flex', gap: '32px' },
-  navLink: { color: '#64748b', textDecoration: 'none', fontSize: '14px', fontWeight: '500', transition: 'color 0.2s' },
-  navActions: { display: 'flex', gap: '12px', alignItems: 'center' },
-  navLoginBtn: {
-    padding: '8px 20px', borderRadius: '10px', fontSize: '14px', fontWeight: '600',
-    color: '#3b82f6', textDecoration: 'none', border: '1.5px solid rgba(59,130,246,0.3)',
-    background: 'rgba(59,130,246,0.05)', transition: 'all 0.2s',
-  },
-  navRegisterBtn: {
-    padding: '8px 20px', borderRadius: '10px', fontSize: '14px', fontWeight: '600',
-    color: '#fff', textDecoration: 'none',
-    background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
-    boxShadow: '0 4px 12px rgba(59,130,246,0.3)',
-  },
-
-  // HERO
-  hero: {
-    maxWidth: '1200px', margin: '0 auto', padding: '140px 40px 80px',
-    display: 'flex', alignItems: 'center', gap: '60px', position: 'relative', zIndex: 1,
-  },
-  heroLeft: { flex: 1 },
-  heroBadge: {
-    display: 'inline-flex', alignItems: 'center', gap: '8px',
-    background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)',
-    borderRadius: '100px', padding: '6px 16px',
-    fontSize: '12px', fontWeight: '600', color: '#3b82f6',
-    marginBottom: '24px', letterSpacing: '0.5px',
-  },
-  badgeDot: {
-    width: '6px', height: '6px', borderRadius: '50%',
-    background: '#3b82f6', display: 'inline-block',
-    boxShadow: '0 0 6px rgba(59,130,246,0.6)',
-    animation: 'floatDelay 2s ease-in-out infinite',
-  },
-  heroTitle: {
-    fontSize: '64px', fontWeight: '700', lineHeight: '1.1',
-    color: '#0f172a', marginBottom: '20px',
-    fontFamily: "'Clash Display', sans-serif",
-  },
-  heroTitleAccent: { color: '#3b82f6' },
-  heroTitleAccent2: {
-    background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
-    WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-  },
-  heroDesc: {
-    fontSize: '17px', color: '#64748b', lineHeight: '1.7',
-    maxWidth: '440px', marginBottom: '36px',
-  },
-  heroCtas: { display: 'flex', gap: '14px', marginBottom: '48px', flexWrap: 'wrap' },
-  ctaPrimary: {
-    padding: '14px 28px', borderRadius: '12px', fontSize: '15px', fontWeight: '600',
-    color: '#fff', textDecoration: 'none',
-    background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
-    boxShadow: '0 8px 24px rgba(59,130,246,0.35)',
-    display: 'inline-block', transition: 'all 0.2s',
-  },
-  ctaSecondary: {
-    padding: '14px 28px', borderRadius: '12px', fontSize: '15px', fontWeight: '600',
-    color: '#1e293b', textDecoration: 'none',
-    background: 'rgba(255,255,255,0.8)', border: '1.5px solid rgba(0,0,0,0.08)',
-    backdropFilter: 'blur(10px)', boxShadow: '0 4px 16px rgba(0,0,0,0.06)',
-    display: 'inline-block',
-  },
-  heroStats: { display: 'flex', gap: '40px' },
-  heroStat: { display: 'flex', flexDirection: 'column', gap: '2px' },
-  heroStatNum: { fontSize: '28px', fontWeight: '700', color: '#1e293b', fontFamily: "'Clash Display', sans-serif" },
-  heroStatLabel: { fontSize: '13px', color: '#94a3b8', fontWeight: '500' },
-
-  // PHONE
-  heroRight: { flex: 1, display: 'flex', justifyContent: 'center', position: 'relative' },
-  phoneMockup: {
-    width: '280px', height: '560px', borderRadius: '40px',
-    background: '#fff', border: '8px solid #e2e8f0',
-    boxShadow: '0 40px 80px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.05)',
-    overflow: 'hidden', position: 'relative', zIndex: 2,
-    animation: 'float 6s ease-in-out infinite',
-  },
-  phoneScreen: { padding: '20px 16px', height: '100%', overflowY: 'hidden' },
-  phoneHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' },
-  phoneHeaderLeft: { display: 'flex', alignItems: 'center', gap: '4px' },
-  phonePin: { fontSize: '14px' },
-  phoneLocation: { fontSize: '13px', fontWeight: '600', color: '#1e293b' },
-  phoneAvatar: {
-    width: '28px', height: '28px', borderRadius: '8px',
-    background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    color: '#fff', fontWeight: '700', fontSize: '12px',
-  },
-  phoneBanner: {
-    borderRadius: '16px', padding: '16px',
-    background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
-    marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-  },
-  phoneBannerTag: { fontSize: '9px', color: 'rgba(255,255,255,0.7)', fontWeight: '600', marginBottom: '4px', letterSpacing: '1px' },
-  phoneBannerTitle: { fontSize: '16px', fontWeight: '700', color: '#fff' },
-  phoneBannerSub: { fontSize: '11px', color: 'rgba(255,255,255,0.8)' },
-  phoneBannerEmoji: { fontSize: '32px' },
-  phoneSection: { fontSize: '12px', fontWeight: '700', color: '#1e293b', marginBottom: '10px' },
-  phoneStoreCard: {
-    display: 'flex', alignItems: 'center', gap: '10px', padding: '10px',
-    borderRadius: '12px', background: '#f8faff', border: '1px solid #e2e8f0',
-    marginBottom: '8px',
-  },
-  phoneStoreImg: {
-    width: '40px', height: '40px', borderRadius: '10px',
-    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', flexShrink: 0,
-  },
-  phoneStoreInfo: { flex: 1 },
-  phoneStoreName: { fontSize: '12px', fontWeight: '600', color: '#1e293b' },
-  phoneStoreMeta: { fontSize: '10px', color: '#94a3b8', marginTop: '1px' },
-  phoneStoreBottom: { display: 'flex', alignItems: 'center', gap: '4px', marginTop: '3px' },
-  phoneStoreRating: { fontSize: '10px', color: '#f59e0b', fontWeight: '600' },
-  phoneStoreDot: { fontSize: '10px', color: '#cbd5e1' },
-  phoneStoreTime: { fontSize: '10px', color: '#64748b' },
-  phoneStoreArrow: { fontSize: '18px', color: '#cbd5e1', fontWeight: '300' },
-
-  // FLOAT CARDS
-  floatCard1: {
-    position: 'absolute', left: '-20px', bottom: '120px', zIndex: 3,
-    background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(20px)',
-    border: '1px solid rgba(255,255,255,0.6)', borderRadius: '16px',
-    padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px',
-    boxShadow: '0 8px 32px rgba(0,0,0,0.10)',
-    animation: 'floatDelay 5s ease-in-out infinite',
-  },
-  floatCardIcon: { fontSize: '22px' },
-  floatCardTitle: { fontSize: '13px', fontWeight: '700', color: '#1e293b' },
-  floatCardSub: { fontSize: '11px', color: '#94a3b8', marginTop: '1px' },
-  floatCard2: {
-    position: 'absolute', right: '-10px', top: '80px', zIndex: 3,
-    background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(20px)',
-    border: '1px solid rgba(255,255,255,0.6)', borderRadius: '16px',
-    padding: '14px 18px', textAlign: 'center',
-    boxShadow: '0 8px 32px rgba(0,0,0,0.10)',
-    animation: 'float 4s ease-in-out infinite',
-  },
-  floatCard2Icon: { fontSize: '22px', display: 'block', marginBottom: '4px' },
-  floatCard2Text: { fontSize: '20px', fontWeight: '700', color: '#1e293b', fontFamily: "'Clash Display', sans-serif" },
-  floatCard2Sub: { fontSize: '11px', color: '#94a3b8' },
-
-  // SECTIONS
-  section: {
-    maxWidth: '1200px', margin: '0 auto', padding: '80px 40px',
-    textAlign: 'center', position: 'relative', zIndex: 1,
-  },
-  sectionBadge: {
-    display: 'inline-block', marginBottom: '16px',
-    background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)',
-    borderRadius: '100px', padding: '5px 16px',
-    fontSize: '12px', fontWeight: '600', color: '#3b82f6', letterSpacing: '0.5px',
-  },
-  sectionTitle: {
-    fontSize: '44px', fontWeight: '700', color: '#0f172a',
-    lineHeight: '1.2', marginBottom: '16px',
-    fontFamily: "'Clash Display', sans-serif",
-  },
-  sectionDesc: { fontSize: '16px', color: '#64748b', marginBottom: '56px', lineHeight: '1.6' },
-
-  // FEATURES
-  featuresGrid: { display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '20px' },
-  featureCard: {
-    padding: '32px 24px', borderRadius: '20px',
-    background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(20px)',
-    border: '1px solid rgba(255,255,255,0.8)',
-    boxShadow: '0 4px 24px rgba(0,0,0,0.05)',
-    transition: 'all 0.3s ease', cursor: 'default', textAlign: 'left',
-  },
-  featureCardActive: {
-    background: 'rgba(255,255,255,0.95)',
-    boxShadow: '0 12px 40px rgba(59,130,246,0.15)',
-    border: '1px solid rgba(59,130,246,0.2)',
-    transform: 'translateY(-4px)',
-  },
-  featureIcon: { fontSize: '36px', marginBottom: '16px' },
-  featureTitle: { fontSize: '16px', fontWeight: '700', color: '#1e293b', marginBottom: '8px' },
-  featureDesc: { fontSize: '14px', color: '#64748b', lineHeight: '1.6' },
-
-  // HOW IT WORKS
-  howSection: {
-    background: 'linear-gradient(135deg, rgba(59,130,246,0.04), rgba(99,102,241,0.04))',
-    padding: '80px 0', position: 'relative', zIndex: 1,
-  },
-  howInner: {
-    maxWidth: '1200px', margin: '0 auto', padding: '0 40px',
-    display: 'flex', gap: '80px', alignItems: 'center',
-  },
-  howLeft: { flex: 1 },
-  howRight: { flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' },
-  stepCard: {
-    display: 'flex', alignItems: 'flex-start', gap: '20px', padding: '24px',
-    borderRadius: '16px', background: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(10px)',
-    border: '1px solid rgba(255,255,255,0.9)', boxShadow: '0 4px 16px rgba(0,0,0,0.04)',
-  },
-  stepNum: {
-    fontSize: '13px', fontWeight: '800', color: '#3b82f6',
-    background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)',
-    borderRadius: '8px', padding: '6px 10px', letterSpacing: '1px', flexShrink: 0,
-  },
-  stepContent: {},
-  stepTitle: { fontSize: '15px', fontWeight: '700', color: '#1e293b', marginBottom: '4px' },
-  stepDesc: { fontSize: '13px', color: '#64748b', lineHeight: '1.6' },
-
-  // ROLES
-  rolesGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', maxWidth: '900px', margin: '0 auto' },
-  roleCard: {
-    borderRadius: '24px', overflow: 'hidden',
-    background: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(20px)',
-    border: '1px solid rgba(255,255,255,0.9)',
-    boxShadow: '0 8px 32px rgba(0,0,0,0.06)', textAlign: 'left',
-  },
-  roleCardTop: {
-    padding: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-  },
-  roleEmoji: { fontSize: '64px' },
-  roleCardBody: { padding: '28px' },
-  roleCardTitle: { fontSize: '22px', fontWeight: '700', color: '#1e293b', marginBottom: '10px', fontFamily: "'Clash Display', sans-serif" },
-  roleCardDesc: { fontSize: '14px', color: '#64748b', lineHeight: '1.6', marginBottom: '20px' },
-  roleList: { listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px' },
-  roleListItem: { fontSize: '14px', color: '#475569', fontWeight: '500' },
-  roleBtn: {
-    display: 'inline-block', padding: '12px 24px', borderRadius: '10px',
-    background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
-    color: '#fff', textDecoration: 'none', fontSize: '14px', fontWeight: '600',
-    boxShadow: '0 4px 16px rgba(59,130,246,0.3)',
-  },
-
-  // TESTIMONIALS
-  testimonialsSection: {
-    background: 'linear-gradient(135deg, rgba(59,130,246,0.03), rgba(99,102,241,0.03))',
-    padding: '80px 0', textAlign: 'center', position: 'relative', zIndex: 1,
-  },
-  testimonialsGrid: {
-    display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '20px',
-    maxWidth: '1100px', margin: '0 auto', padding: '0 40px',
-  },
-  testimonialCard: {
-    padding: '28px', borderRadius: '20px', textAlign: 'left',
-    background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(20px)',
-    border: '1px solid rgba(255,255,255,0.9)', boxShadow: '0 4px 24px rgba(0,0,0,0.05)',
-  },
-  testimonialStars: { fontSize: '14px', marginBottom: '12px' },
-  testimonialText: { fontSize: '14px', color: '#475569', lineHeight: '1.7', marginBottom: '20px', fontStyle: 'italic' },
-  testimonialAuthor: { display: 'flex', alignItems: 'center', gap: '12px' },
-  testimonialAvatar: {
-    width: '40px', height: '40px', borderRadius: '50%',
-    background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    color: '#fff', fontWeight: '700', fontSize: '16px',
-  },
-  testimonialName: { fontSize: '14px', fontWeight: '700', color: '#1e293b' },
-  testimonialRole: { fontSize: '12px', color: '#94a3b8', marginTop: '2px' },
-
-  // CTA BANNER
-  ctaBanner: {
-    margin: '80px 40px', borderRadius: '32px',
-    background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
-    padding: '80px 40px', textAlign: 'center', position: 'relative', zIndex: 1,
-    boxShadow: '0 20px 60px rgba(59,130,246,0.3)',
-    overflow: 'hidden',
-  },
-  ctaBannerInner: { position: 'relative', zIndex: 1 },
-  ctaBannerTitle: { fontSize: '48px', fontWeight: '700', color: '#fff', marginBottom: '14px', fontFamily: "'Clash Display', sans-serif" },
-  ctaBannerDesc: { fontSize: '17px', color: 'rgba(255,255,255,0.8)', marginBottom: '36px' },
-  ctaBannerBtns: { display: 'flex', gap: '14px', justifyContent: 'center', flexWrap: 'wrap' },
-  ctaBannerPrimary: {
-    padding: '14px 32px', borderRadius: '12px', fontSize: '15px', fontWeight: '600',
-    color: '#3b82f6', textDecoration: 'none', background: '#fff',
-    boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
-  },
-  ctaBannerSecondary: {
-    padding: '14px 32px', borderRadius: '12px', fontSize: '15px', fontWeight: '600',
-    color: '#fff', textDecoration: 'none',
-    background: 'rgba(255,255,255,0.15)', border: '1.5px solid rgba(255,255,255,0.4)',
-    backdropFilter: 'blur(10px)',
-  },
-
-  // FOOTER
-  footer: {
-    background: '#0f172a', padding: '60px 0 0', position: 'relative', zIndex: 1,
-  },
-  footerInner: {
-    maxWidth: '1200px', margin: '0 auto', padding: '0 40px 48px',
-    display: 'flex', justifyContent: 'space-between', gap: '60px',
-    borderBottom: '1px solid rgba(255,255,255,0.08)',
-  },
-  footerBrand: { maxWidth: '280px' },
-  footerBrandDesc: { fontSize: '14px', color: '#64748b', lineHeight: '1.6', marginTop: '12px' },
-  footerLinks: { display: 'flex', gap: '60px' },
-  footerLinkGroup: { display: 'flex', flexDirection: 'column', gap: '12px' },
-  footerLinkTitle: { fontSize: '13px', fontWeight: '700', color: '#fff', letterSpacing: '1px', marginBottom: '4px' },
-  footerLink: { fontSize: '14px', color: '#64748b', textDecoration: 'none', transition: 'color 0.2s' },
-  footerBottom: {
-    maxWidth: '1200px', margin: '0 auto', padding: '20px 40px',
-    fontSize: '13px', color: '#475569',
-  },
 };
 
 export default LandingPage;

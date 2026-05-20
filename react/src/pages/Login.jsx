@@ -2,6 +2,56 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { loginUser } from '../services/api';
 
+const Icon = ({ children, className = 'w-5 h-5' }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.75"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden
+  >
+    {children}
+  </svg>
+);
+
+const StoreIcon = () => (
+  <Icon className="w-4 h-4">
+    <path d="M3 9l9-6 9 6v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9z" />
+    <path d="M9 21V12h6v9" />
+  </Icon>
+);
+
+const TruckIcon = () => (
+  <Icon className="w-4 h-4">
+    <path d="M14 18H4v-8h11v8z" />
+    <path d="M14 10h3l3 3v5h-6" />
+    <circle cx="7" cy="18" r="2" />
+    <circle cx="17" cy="18" r="2" />
+  </Icon>
+);
+
+const MessageIcon = () => (
+  <Icon className="w-4 h-4">
+    <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8z" />
+  </Icon>
+);
+
+const StarIcon = () => (
+  <Icon className="w-4 h-4">
+    <path d="M12 2.5l2.2 4.5 5 .7-3.6 3.5.9 5-4.5-2.4-4.5 2.4.9-5-3.6-3.5 5-.7L12 2.5z" />
+  </Icon>
+);
+
+const highlights = [
+  { Icon: StoreIcon, text: 'Local stores' },
+  { Icon: TruckIcon, text: 'Fast delivery' },
+  { Icon: MessageIcon, text: 'Seller chat' },
+  { Icon: StarIcon, text: 'Reviews' },
+];
+
 const Login = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({ username: '', password: '' });
@@ -21,16 +71,19 @@ const Login = () => {
       const res = await loginUser(formData);
       localStorage.setItem('token', res.data.accessToken);
       localStorage.setItem('role', res.data.role);
-      localStorage.setItem('user', JSON.stringify({
-        id: res.data.userId,
-        username: res.data.username,
-        email: res.data.email,
-        role: res.data.role,
-      }));
+      localStorage.setItem(
+        'user',
+        JSON.stringify({
+          id: res.data.userId,
+          username: res.data.username,
+          email: res.data.email,
+          role: res.data.role,
+        })
+      );
       if (res.data.role === 'buyer') navigate('/buyer/dashboard');
       else if (res.data.role === 'store_owner') navigate('/store/dashboard');
       else if (res.data.role === 'admin') navigate('/admin/dashboard');
-    } catch (err) {
+    } catch {
       setError('Invalid username or password');
     } finally {
       setLoading(false);
@@ -38,253 +91,256 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex relative overflow-hidden bg-gradient-to-br from-[#0a0f1e] via-[#0d1117] to-[#0a0f1e]">
-
-      {/* Ambient glows */}
-      <div className="absolute pointer-events-none w-[700px] h-[700px] rounded-full bg-[radial-gradient(circle,rgba(59,130,246,0.12)_0%,transparent_70%)] -top-[200px] -left-[150px]" />
-      <div className="absolute pointer-events-none w-[500px] h-[500px] rounded-full bg-[radial-gradient(circle,rgba(99,102,241,0.10)_0%,transparent_70%)] -bottom-[100px] right-1/4" />
-      <div className="absolute pointer-events-none w-[300px] h-[300px] rounded-full bg-[radial-gradient(circle,rgba(59,130,246,0.08)_0%,transparent_70%)] top-[40%] right-[10%]" />
-
-      {/* Subtle grid overlay */}
-      <div 
-        className="absolute inset-0 pointer-events-none opacity-30"
-        style={{
-          backgroundImage: 'linear-gradient(rgba(59,130,246,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(59,130,246,0.03) 1px, transparent 1px)',
-          backgroundSize: '60px 60px',
-        }}
+    <div className="min-h-screen bg-[#f7f5f1] font-['DM_Sans',system-ui,sans-serif] text-slate-800 antialiased">
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap"
       />
 
-      {/* Left Panel */}
-      <div className="flex-1 hidden lg:flex items-center justify-center px-8 xl:px-16">
-        <div className="max-w-lg w-full">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_70%_50%_at_50%_0%,rgba(30,77,58,0.06),transparent)]" />
 
-          {/* Brand badge */}
-          <div className="inline-flex items-center gap-2 mb-8 px-4 py-2 rounded-full text-xs font-semibold tracking-widest uppercase bg-blue-500/10 border border-blue-500/25 text-blue-400 backdrop-blur-lg transition-all duration-300 hover:bg-blue-500/20 hover:border-blue-500/40 hover:scale-105 cursor-default">
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
-            Local Delivery Platform
-          </div>
-
-          {/* Headline */}
-          <h1 className="font-black leading-none mb-6 text-4xl sm:text-5xl xl:text-[58px] text-white tracking-tight">
-            Fast &<br />
-            <span className="bg-gradient-to-br from-blue-500 to-indigo-500 bg-clip-text text-transparent">
-              Fresh.
+      <div className="relative mx-auto flex min-h-screen max-w-4xl flex-col px-5 py-6 sm:px-8">
+        <header className="mb-6 flex items-center justify-between lg:mb-8">
+          <Link to="/" className="inline-flex items-center gap-2.5 no-underline">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900 text-sm font-bold text-white">
+              N
             </span>
-          </h1>
+            <span className="font-['Libre_Baskerville'] text-lg font-bold text-slate-900">NearBuy</span>
+          </Link>
+          <Link
+            to="/"
+            className="text-sm font-medium text-slate-600 no-underline hover:text-slate-900 lg:hidden"
+          >
+            Home
+          </Link>
+        </header>
 
-          <p className="text-base leading-relaxed mb-10 text-slate-500 max-w-[380px]">
-            Order from local stores near you. Get groceries and essentials delivered straight to your door.
-          </p>
-
-          {/* Stats */}
-          <div className="flex items-center gap-0 mb-10 rounded-2xl overflow-hidden bg-white/[0.03] border border-white/[0.06] backdrop-blur-xl">
-            {[
-              { num: '500+', label: 'Local Stores' },
-              { num: '10k+', label: 'Happy Buyers' },
-              { num: '30min', label: 'Avg Delivery' },
-            ].map((s, i) => (
-              <div 
-                key={i} 
-                className={`flex-1 text-center py-5 transition-all duration-300 hover:bg-white/[0.03] cursor-default ${i < 2 ? 'border-r border-white/[0.06]' : ''}`}
-              >
-                <div className="font-bold text-xl text-blue-500 transition-transform duration-300 group-hover:scale-110">{s.num}</div>
-                <div className="text-xs mt-1 text-slate-600">{s.label}</div>
-              </div>
-            ))}
-          </div>
-
-          {/* Features */}
-          <div className="flex flex-col gap-3">
-            {[
-              { icon: '⌂', text: 'Browse nearby stores' },
-              { icon: '↯', text: 'Real-time delivery tracking' },
-              { icon: '◎', text: 'Chat with store owners' },
-              { icon: '◈', text: 'Rate your experience' },
-            ].map((f, i) => (
-              <div 
-                key={i} 
-                className="flex items-center gap-4 px-4 py-3 rounded-xl bg-white/[0.02] border border-white/[0.05] backdrop-blur-lg transition-all duration-300 hover:bg-white/[0.05] hover:border-white/[0.10] hover:translate-x-2 hover:shadow-lg hover:shadow-blue-500/5 cursor-default group"
-              >
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold bg-blue-500/15 text-blue-400 border border-blue-500/20 transition-all duration-300 group-hover:bg-blue-500/25 group-hover:scale-110 group-hover:rotate-3">
-                  {f.icon}
+        <div className="flex flex-1 items-center justify-center pb-4">
+          <div className="grid w-full max-w-3xl items-center gap-8 lg:grid-cols-2 lg:gap-10">
+            {/* Left intro */}
+            <aside className="hidden lg:block">
+              <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-[0_12px_32px_-12px_rgba(15,23,42,0.08)]">
+                <div className="bg-[#1e4d3a] px-5 py-4 text-white">
+                  <p className="text-[11px] font-semibold uppercase tracking-widest text-white/70">
+                    NearBuy · Vigan
+                  </p>
+                  <p className="mt-2 font-['Libre_Baskerville'] text-xl font-bold leading-snug">
+                    Your neighborhood market, online.
+                  </p>
                 </div>
-                <span className="text-sm text-slate-400 transition-colors duration-300 group-hover:text-slate-300">{f.text}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
 
-      {/* Right Panel — Login Card */}
-      <div className="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-16 py-8">
-        <div className="w-full max-w-md">
+                <div className="space-y-4 p-5">
+                  <p className="text-sm leading-relaxed text-slate-600">
+                    Order from local shops or manage your store—all from one account.
+                  </p>
 
-          {/* Glass card */}
-          <div className="rounded-3xl p-6 sm:p-8 lg:p-10 bg-white/[0.04] border border-white/[0.08] backdrop-blur-[40px] shadow-[0_32px_80px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.06)] transition-all duration-500 hover:bg-white/[0.05] hover:border-white/[0.12]">
-
-            {/* Logo */}
-            <div className="flex items-center gap-2 mb-8 group cursor-default">
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm bg-gradient-to-br from-blue-500 to-indigo-500 text-white shadow-[0_4px_16px_rgba(59,130,246,0.4)] transition-all duration-300 group-hover:shadow-[0_6px_24px_rgba(59,130,246,0.5)] group-hover:scale-110">
-                N
-              </div>
-              <span className="font-bold text-lg text-white tracking-tight transition-colors duration-300 group-hover:text-blue-400">NearBuy</span>
-            </div>
-
-            <h2 className="font-bold mb-1 text-2xl sm:text-[26px] text-white tracking-tight">
-              Welcome back
-            </h2>
-            <p className="text-sm mb-8 text-slate-600">Sign in to continue shopping</p>
-
-            {/* Error */}
-            {error && (
-              <div className="flex items-center gap-3 px-4 py-3 rounded-xl mb-6 text-sm bg-red-500/[0.08] border border-red-500/20 text-red-400 animate-[shake_0.5s_ease-in-out]">
-                <div className="w-1.5 h-1.5 rounded-full bg-red-400 flex-shrink-0 animate-pulse" />
-                {error}
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-
-              {/* Username */}
-              <div className="group">
-                <label className="block text-xs font-semibold mb-2 tracking-widest uppercase text-slate-700 transition-colors duration-300 group-focus-within:text-blue-400">
-                  Username
-                </label>
-                <div className="flex items-center rounded-xl overflow-hidden bg-white/[0.05] border border-white/[0.08] transition-all duration-300 focus-within:border-blue-500/50 focus-within:bg-white/[0.08] focus-within:shadow-[0_0_0_3px_rgba(59,130,246,0.15)] hover:border-white/[0.15]">
-                  <div className="px-4 flex items-center justify-center text-slate-700 transition-colors duration-300 group-focus-within:text-blue-400">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                      <circle cx="12" cy="7" r="4"/>
-                    </svg>
+                  <div className="grid grid-cols-3 gap-2 rounded-lg bg-[#faf9f7] p-2.5 ring-1 ring-stone-200">
+                    {[
+                      ['120+', 'stores'],
+                      ['8k', 'orders'],
+                      ['~45m', 'delivery'],
+                    ].map(([value, label]) => (
+                      <div key={label} className="text-center">
+                        <p className="font-['Libre_Baskerville'] text-base font-bold text-slate-900">
+                          {value}
+                        </p>
+                        <p className="text-[10px] uppercase tracking-wide text-slate-500">{label}</p>
+                      </div>
+                    ))}
                   </div>
-                  <input
-                    type="text"
-                    name="username"
-                    placeholder="Enter your username"
-                    value={formData.username}
-                    onChange={handleChange}
-                    required
-                    className="flex-1 py-4 pr-4 bg-transparent outline-none text-sm text-white placeholder:text-slate-700 caret-blue-500"
-                  />
+
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {highlights.map(({ Icon: ItemIcon, text }) => (
+                      <div
+                        key={text}
+                        className="flex items-center gap-2 rounded-md bg-[#faf9f7] px-2.5 py-2 ring-1 ring-stone-100"
+                      >
+                        <span className="text-[#1e4d3a]">
+                          <ItemIcon />
+                        </span>
+                        <span className="text-xs font-medium text-slate-700">{text}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <p className="text-xs text-slate-500">
+                    Buyers and sari-sari stores across Ilocos Sur.
+                  </p>
                 </div>
               </div>
+            </aside>
 
-              {/* Password */}
-              <div className="group">
-                <label className="block text-xs font-semibold mb-2 tracking-widest uppercase text-slate-700 transition-colors duration-300 group-focus-within:text-blue-400">
-                  Password
-                </label>
-                <div className="flex items-center rounded-xl overflow-hidden bg-white/[0.05] border border-white/[0.08] transition-all duration-300 focus-within:border-blue-500/50 focus-within:bg-white/[0.08] focus-within:shadow-[0_0_0_3px_rgba(59,130,246,0.15)] hover:border-white/[0.15]">
-                  <div className="px-4 flex items-center justify-center text-slate-700 transition-colors duration-300 group-focus-within:text-blue-400">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                      <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                    </svg>
-                  </div>
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    name="password"
-                    placeholder="Enter your password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    required
-                    className="flex-1 py-4 bg-transparent outline-none text-sm text-white placeholder:text-slate-700 caret-blue-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="px-4 flex items-center justify-center text-slate-700 bg-transparent border-none cursor-pointer transition-all duration-300 hover:text-blue-400 hover:scale-110 active:scale-95"
+            {/* Sign in */}
+            <div className="w-full">
+              <div className="mb-4 text-center lg:hidden">
+                <h1 className="font-['Libre_Baskerville'] text-2xl font-bold text-slate-900">
+                  Sign in to <span className="text-[#1e4d3a]">NearBuy</span>
+                </h1>
+                <p className="mt-1 text-sm text-slate-500">Local stores, delivered nearby</p>
+              </div>
+
+              <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-[0_12px_32px_-12px_rgba(15,23,42,0.08)] sm:p-7">
+                <h2 className="font-['Libre_Baskerville'] text-xl font-bold text-slate-900 lg:text-2xl">
+                  Sign in
+                </h2>
+                <p className="mt-0.5 text-sm text-slate-500">Use your NearBuy credentials</p>
+
+                {error && (
+                  <div
+                    className="mt-4 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-800"
+                    role="alert"
                   >
-                    {showPassword ? (
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
-                        <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
-                        <line x1="1" y1="1" x2="23" y2="23"/>
-                      </svg>
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-500" />
+                    {error}
+                  </div>
+                )}
+
+                <form onSubmit={handleSubmit} className="mt-5 flex flex-col gap-3.5">
+                  <div>
+                    <label htmlFor="username" className="mb-1 block text-sm font-medium text-slate-700">
+                      Username
+                    </label>
+                    <div className="flex items-center overflow-hidden rounded-lg border border-stone-300 bg-[#faf9f7] transition-colors focus-within:border-[#1e4d3a] focus-within:ring-2 focus-within:ring-[#1e4d3a]/15">
+                      <span className="px-3 text-slate-400">
+                        <Icon className="h-[18px] w-[18px]">
+                          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                          <circle cx="12" cy="7" r="4" />
+                        </Icon>
+                      </span>
+                      <input
+                        id="username"
+                        type="text"
+                        name="username"
+                        placeholder="Your username"
+                        value={formData.username}
+                        onChange={handleChange}
+                        required
+                        autoComplete="username"
+                        className="flex-1 border-0 bg-transparent py-2.5 pr-3 text-sm text-slate-900 outline-none placeholder:text-slate-400"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label htmlFor="password" className="mb-1 block text-sm font-medium text-slate-700">
+                      Password
+                    </label>
+                    <div className="flex items-center overflow-hidden rounded-lg border border-stone-300 bg-[#faf9f7] transition-colors focus-within:border-[#1e4d3a] focus-within:ring-2 focus-within:ring-[#1e4d3a]/15">
+                      <span className="px-3 text-slate-400">
+                        <Icon className="h-[18px] w-[18px]">
+                          <rect x="3" y="11" width="18" height="11" rx="2" />
+                          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                        </Icon>
+                      </span>
+                      <input
+                        id="password"
+                        type={showPassword ? 'text' : 'password'}
+                        name="password"
+                        placeholder="Your password"
+                        value={formData.password}
+                        onChange={handleChange}
+                        required
+                        autoComplete="current-password"
+                        className="flex-1 border-0 bg-transparent py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="px-3 text-slate-400 hover:text-slate-600"
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      >
+                        {showPassword ? (
+                          <Icon className="h-[18px] w-[18px]">
+                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+                            <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+                            <line x1="1" y1="1" x2="23" y2="23" />
+                          </Icon>
+                        ) : (
+                          <Icon className="h-[18px] w-[18px]">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                            <circle cx="12" cy="12" r="3" />
+                          </Icon>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className={`w-full rounded-lg py-2.5 text-sm font-semibold text-white transition-colors ${
+                      loading
+                        ? 'cursor-not-allowed bg-[#1e4d3a]/50'
+                        : 'bg-[#1e4d3a] hover:bg-[#163d2f]'
+                    }`}
+                  >
+                    {loading ? (
+                      <span className="inline-flex items-center justify-center gap-2">
+                        <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" aria-hidden>
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                            fill="none"
+                          />
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          />
+                        </svg>
+                        Signing in…
+                      </span>
                     ) : (
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                        <circle cx="12" cy="12" r="3"/>
-                      </svg>
+                      'Sign in'
                     )}
                   </button>
+                </form>
+
+                <div className="relative my-4 text-center text-xs text-slate-500">
+                  <span className="relative z-10 bg-white px-2">or</span>
+                  <div className="absolute inset-x-0 top-1/2 h-px bg-stone-200" aria-hidden />
                 </div>
+
+                <a
+                  href="http://localhost:8080/oauth2/authorization/google"
+                  className="flex w-full items-center justify-center gap-2.5 rounded-lg border border-stone-300 bg-white py-2.5 text-sm font-semibold text-slate-700 no-underline transition-colors hover:border-stone-400 hover:bg-stone-50"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden>
+                    <path
+                      fill="#4285F4"
+                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                    />
+                    <path
+                      fill="#34A853"
+                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                    />
+                    <path
+                      fill="#FBBC05"
+                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"
+                    />
+                    <path
+                      fill="#EA4335"
+                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                    />
+                  </svg>
+                  Continue with Google
+                </a>
+
+                <p className="mt-4 text-center text-sm text-slate-600">
+                  New here?{' '}
+                  <Link to="/register" className="font-semibold text-[#1e4d3a] no-underline hover:underline">
+                    Create an account
+                  </Link>
+                </p>
               </div>
-
-              {/* Sign in button */}
-              <button
-                type="submit"
-                disabled={loading}
-                className={`w-full py-4 rounded-xl font-semibold text-sm mt-2 text-white border-none tracking-wide transition-all duration-300 ${
-                  loading 
-                    ? 'bg-blue-500/40 cursor-not-allowed' 
-                    : 'bg-gradient-to-br from-blue-500 to-indigo-500 cursor-pointer shadow-[0_8px_32px_rgba(59,130,246,0.35),inset_0_1px_0_rgba(255,255,255,0.15)] hover:shadow-[0_12px_40px_rgba(59,130,246,0.5),inset_0_1px_0_rgba(255,255,255,0.2)] hover:scale-[1.02] hover:-translate-y-0.5 active:scale-[0.98] active:translate-y-0'
-                }`}
-              >
-                {loading ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                    </svg>
-                    Signing in...
-                  </span>
-                ) : 'Sign In'}
-              </button>
-            </form>
-
-            {/* OAuth Buttons */}
-            <div className="flex flex-col gap-3 my-6">
-              
-                <a href="http://localhost:8080/oauth2/authorization/google"
-                className="flex items-center justify-center gap-3 w-full py-3.5 rounded-xl text-sm font-semibold bg-white/[0.04] border border-white/[0.08] text-slate-300 no-underline transition-all duration-300 hover:bg-white/[0.08] hover:border-white/[0.15] hover:scale-[1.02] hover:-translate-y-0.5"
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                </svg>
-                Continue with Google
-              </a>
-            </div>
-
-            {/* Divider */}
-            <div className="flex items-center gap-4 mb-6">
-              <div className="flex-1 h-px bg-white/[0.06]" />
-              <span className="text-xs text-slate-700">New to NearBuy?</span>
-              <div className="flex-1 h-px bg-white/[0.06]" />
-            </div>
-
-            {/* Register button */}
-            <Link
-              to="/register"
-              className="block w-full py-4 rounded-xl text-center text-sm font-semibold bg-white/[0.04] border border-white/[0.08] text-blue-400 no-underline backdrop-blur-lg shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition-all duration-300 hover:bg-white/[0.08] hover:border-blue-500/30 hover:text-blue-300 hover:scale-[1.02] hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(59,130,246,0.15),inset_0_1px_0_rgba(255,255,255,0.08)] active:scale-[0.98] active:translate-y-0"
-            >
-              Create an Account
-            </Link>
-          </div>
-
-          {/* Mobile-only brand badge */}
-          <div className="lg:hidden flex justify-center mt-6">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold tracking-widest uppercase bg-blue-500/10 border border-blue-500/25 text-blue-400 backdrop-blur-lg">
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
-              Local Delivery Platform
             </div>
           </div>
         </div>
       </div>
-
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-        * { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', sans-serif; }
-        
-        @keyframes shake {
-          0%, 100% { transform: translateX(0); }
-          10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
-          20%, 40%, 60%, 80% { transform: translateX(4px); }
-        }
-      `}</style>
     </div>
   );
 };

@@ -1,10 +1,67 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { getStores, getOrders, placeOrder, cancelOrder, getNotifications, markNotificationRead, markAllNotificationsRead, getMessages, springApi } from '../services/api';
+import { useNavigate, Link } from 'react-router-dom';
+import {
+  getStores,
+  getOrders,
+  placeOrder,
+  cancelOrder,
+  getNotifications,
+  markNotificationRead,
+  markAllNotificationsRead,
+  getMessages,
+  springApi,
+} from '../services/api';
 import OrderReceiptModal from '../components/OrderReceiptModal';
 import Feedback from './Feedback';
 
-// ── Cart Drawer ───────────────────────────────────────────────────────────────
+const Icon = ({ children, className = 'w-5 h-5' }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.75"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden
+  >
+    {children}
+  </svg>
+);
+
+const storeImageUrl = (url) => {
+  if (!url) return null;
+  return url.startsWith('/api') ? `http://localhost:8080${url}` : url;
+};
+
+const STATUS_STEPS = [
+  { key: 'PENDING', label: 'Order placed' },
+  { key: 'CONFIRMED', label: 'Confirmed' },
+  { key: 'PREPARING', label: 'Preparing' },
+  { key: 'OUT_FOR_DELIVERY', label: 'On the way' },
+  { key: 'DELIVERED', label: 'Delivered' },
+];
+
+const statusStyles = {
+  PENDING: { bg: 'bg-amber-50', text: 'text-amber-800', border: 'border-amber-200', dot: 'bg-amber-500' },
+  CONFIRMED: { bg: 'bg-blue-50', text: 'text-blue-800', border: 'border-blue-200', dot: 'bg-blue-500' },
+  PREPARING: { bg: 'bg-violet-50', text: 'text-violet-800', border: 'border-violet-200', dot: 'bg-violet-500' },
+  OUT_FOR_DELIVERY: { bg: 'bg-cyan-50', text: 'text-cyan-800', border: 'border-cyan-200', dot: 'bg-cyan-500' },
+  DELIVERED: { bg: 'bg-emerald-50', text: 'text-emerald-800', border: 'border-emerald-200', dot: 'bg-emerald-600' },
+  CANCELLED: { bg: 'bg-red-50', text: 'text-red-800', border: 'border-red-200', dot: 'bg-red-500' },
+};
+
+const notifTypeStyle = {
+  order_placed: 'bg-amber-100 text-amber-800',
+  order_confirmed: 'bg-blue-100 text-blue-800',
+  order_preparing: 'bg-violet-100 text-violet-800',
+  order_out_for_delivery: 'bg-cyan-100 text-cyan-800',
+  order_delivered: 'bg-emerald-100 text-emerald-800',
+  order_cancelled: 'bg-red-100 text-red-800',
+  general: 'bg-stone-100 text-stone-700',
+};
+
+// ── Cart drawer ─────────────────────────────────────────────────────────────
 const CartDrawer = ({ open, onClose, onCheckout }) => {
   const [cart, setCart] = useState([]);
   const [storeName, setStoreName] = useState('');
@@ -18,9 +75,8 @@ const CartDrawer = ({ open, onClose, onCheckout }) => {
     const savedCart = JSON.parse(localStorage.getItem('cart') || '[]');
     const savedStoreId = localStorage.getItem('storeId');
     setCart(savedCart);
-    // Try to get store name
     if (savedStoreId) {
-      springApi.get(`/stores/${savedStoreId}`).then(res => setStoreName(res.data.name)).catch(() => {});
+      springApi.get(`/stores/${savedStoreId}`).then((res) => setStoreName(res.data.name)).catch(() => {});
     }
   };
 
@@ -30,21 +86,16 @@ const CartDrawer = ({ open, onClose, onCheckout }) => {
   };
 
   const increase = (productId) => {
-    updateCart(cart.map(item => item.id === productId ? { ...item, quantity: item.quantity + 1 } : item));
+    updateCart(cart.map((item) => (item.id === productId ? { ...item, quantity: item.quantity + 1 } : item)));
   };
 
   const decrease = (productId) => {
-    const item = cart.find(i => i.id === productId);
-    if (item?.quantity === 1) {
-      updateCart(cart.filter(i => i.id !== productId));
-    } else {
-      updateCart(cart.map(i => i.id === productId ? { ...i, quantity: i.quantity - 1 } : i));
-    }
+    const item = cart.find((i) => i.id === productId);
+    if (item?.quantity === 1) updateCart(cart.filter((i) => i.id !== productId));
+    else updateCart(cart.map((i) => (i.id === productId ? { ...i, quantity: i.quantity - 1 } : i)));
   };
 
-  const remove = (productId) => {
-    updateCart(cart.filter(i => i.id !== productId));
-  };
+  const remove = (productId) => updateCart(cart.filter((i) => i.id !== productId));
 
   const clearCart = () => {
     updateCart([]);
@@ -55,123 +106,156 @@ const CartDrawer = ({ open, onClose, onCheckout }) => {
   const totalPrice = cart.reduce((s, i) => s + i.price * i.quantity, 0);
   const storeId = localStorage.getItem('storeId');
 
-  const handleCheckout = () => {
-    onClose();
-    navigate('/checkout');
-  };
-
   return (
     <>
-      {/* Overlay */}
       {open && (
         <div
+          className="fixed inset-0 z-[400] bg-slate-900/40 backdrop-blur-sm"
           onClick={onClose}
-          style={{
-            position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)',
-            zIndex: 400, backdropFilter: 'blur(2px)',
-          }}
+          aria-hidden
         />
       )}
-
-      {/* Drawer */}
-      <div style={{
-        position: 'fixed', top: 0, right: 0, bottom: 0, width: '380px',
-        backgroundColor: '#0e0e11', borderLeft: '1px solid #1f1f24',
-        zIndex: 500, display: 'flex', flexDirection: 'column',
-        transform: open ? 'translateX(0)' : 'translateX(100%)',
-        transition: 'transform 0.3s cubic-bezier(0.4,0,0.2,1)',
-        boxShadow: open ? '-20px 0 60px rgba(0,0,0,0.5)' : 'none',
-      }}>
-        {/* Header */}
-        <div style={{ padding: '20px', borderBottom: '1px solid #1f1f24', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div
+        className={`fixed right-0 top-0 z-[500] flex h-full w-full max-w-md flex-col border-l border-stone-200 bg-white shadow-2xl transition-transform duration-300 ease-out ${
+          open ? 'translate-x-0' : 'translate-x-full'
+        }`}
+      >
+        <div className="flex items-center justify-between border-b border-stone-200 px-5 py-4">
           <div>
-            <h2 style={{ fontSize: '16px', fontWeight: '700', color: '#fff', margin: 0 }}>🛒 Your Cart</h2>
-            {storeName && <p style={{ fontSize: '12px', color: '#52525b', margin: '3px 0 0' }}>from {storeName}</p>}
+            <h2 className="font-['Libre_Baskerville'] text-lg font-bold text-slate-900">Your cart</h2>
+            {storeName && <p className="mt-0.5 text-xs text-slate-500">from {storeName}</p>}
           </div>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <div className="flex items-center gap-2">
             {cart.length > 0 && (
-              <button onClick={clearCart} style={{ fontSize: '11px', color: '#ef4444', backgroundColor: 'transparent', border: '1px solid #ef444440', borderRadius: '6px', padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit' }}>
+              <button
+                type="button"
+                onClick={clearCart}
+                className="rounded-lg border border-red-200 px-2.5 py-1 text-xs font-medium text-red-700 hover:bg-red-50"
+              >
                 Clear
               </button>
             )}
-            <button onClick={onClose} style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#1a1a1f', border: '1px solid #27272a', color: '#71717a', cursor: 'pointer', fontSize: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              ✕
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-stone-200 text-slate-500 hover:bg-stone-50"
+              aria-label="Close cart"
+            >
+              <Icon className="h-4 w-4">
+                <path d="M18 6L6 18M6 6l12 12" />
+              </Icon>
             </button>
           </div>
         </div>
 
-        {/* Content */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
+        <div className="flex-1 overflow-y-auto p-4">
           {cart.length === 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: '12px' }}>
-              <div style={{ fontSize: '56px' }}>🛒</div>
-              <p style={{ fontSize: '15px', fontWeight: '600', color: '#52525b', margin: 0 }}>Your cart is empty</p>
-              <p style={{ fontSize: '13px', color: '#3f3f46', margin: 0, textAlign: 'center' }}>Browse stores and add items to get started!</p>
-              <button onClick={onClose} style={{ marginTop: '8px', padding: '10px 24px', backgroundColor: '#f97316', color: '#fff', border: 'none', borderRadius: '9px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', fontFamily: 'inherit' }}>
-                Browse Stores
+            <div className="flex h-full flex-col items-center justify-center gap-3 py-12 text-center">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#eef4f1] text-[#1e4d3a]">
+                <Icon className="h-7 w-7">
+                  <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
+                  <path d="M3 6h18" />
+                </Icon>
+              </div>
+              <p className="font-semibold text-slate-800">Your cart is empty</p>
+              <p className="max-w-[220px] text-sm text-slate-500">Browse stores and add items to checkout.</p>
+              <button
+                type="button"
+                onClick={onClose}
+                className="mt-2 rounded-lg bg-[#1e4d3a] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#163d2f]"
+              >
+                Browse stores
               </button>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {cart.map(item => (
-                <div key={item.id} style={{ backgroundColor: '#111114', border: '1px solid #1f1f24', borderRadius: '12px', padding: '14px', display: 'flex', gap: '12px', alignItems: 'center' }}>
-                  {/* Image or placeholder */}
-                  <div style={{ width: '52px', height: '52px', borderRadius: '10px', backgroundColor: '#1c1c22', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', flexShrink: 0, overflow: 'hidden' }}>
-                    {item.imageUrl ? <img src={item.imageUrl} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '🛍️'}
+            <ul className="space-y-3">
+              {cart.map((item) => (
+                <li
+                  key={item.id}
+                  className="flex gap-3 rounded-xl border border-stone-200 bg-[#faf9f7] p-3"
+                >
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white text-xs font-bold text-[#1e4d3a] ring-1 ring-stone-200">
+                    {item.imageUrl ? (
+                      <img src={item.imageUrl} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      item.name?.slice(0, 2).toUpperCase()
+                    )}
                   </div>
-
-                  {/* Info */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: '13px', fontWeight: '600', color: '#e4e4e7', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</p>
-                    <p style={{ fontSize: '11px', color: '#52525b', margin: '0 0 8px' }}>{item.category}</p>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '14px', fontWeight: '700', color: '#f97316' }}>₱{(item.price * item.quantity).toFixed(2)}</span>
-                      {/* Qty controls */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <button onClick={() => decrease(item.id)} style={{ width: '26px', height: '26px', borderRadius: '6px', backgroundColor: '#1c1c22', border: '1px solid #27272a', color: '#e4e4e7', cursor: 'pointer', fontSize: '14px', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</button>
-                        <span style={{ fontSize: '13px', fontWeight: '700', color: '#fff', minWidth: '16px', textAlign: 'center' }}>{item.quantity}</span>
-                        <button onClick={() => increase(item.id)} style={{ width: '26px', height: '26px', borderRadius: '6px', backgroundColor: '#f97316', border: 'none', color: '#fff', cursor: 'pointer', fontSize: '14px', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-slate-900">{item.name}</p>
+                    {item.category && <p className="text-xs text-slate-500">{item.category}</p>}
+                    <div className="mt-2 flex items-center justify-between">
+                      <span className="text-sm font-bold text-[#1e4d3a]">
+                        ₱{(item.price * item.quantity).toFixed(2)}
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => decrease(item.id)}
+                          className="flex h-7 w-7 items-center justify-center rounded-md border border-stone-300 bg-white text-slate-700"
+                        >
+                          −
+                        </button>
+                        <span className="min-w-[1.25rem] text-center text-sm font-semibold">{item.quantity}</span>
+                        <button
+                          type="button"
+                          onClick={() => increase(item.id)}
+                          className="flex h-7 w-7 items-center justify-center rounded-md bg-[#1e4d3a] text-white"
+                        >
+                          +
+                        </button>
                       </div>
                     </div>
                   </div>
-
-                  {/* Remove */}
-                  <button onClick={() => remove(item.id)} style={{ color: '#3f3f46', backgroundColor: 'transparent', border: 'none', cursor: 'pointer', fontSize: '16px', padding: '4px', flexShrink: 0 }}>✕</button>
-                </div>
+                  <button
+                    type="button"
+                    onClick={() => remove(item.id)}
+                    className="shrink-0 text-slate-400 hover:text-red-600"
+                    aria-label="Remove item"
+                  >
+                    <Icon className="h-4 w-4">
+                      <path d="M18 6L6 18M6 6l12 12" />
+                    </Icon>
+                  </button>
+                </li>
               ))}
-            </div>
+            </ul>
           )}
         </div>
 
-        {/* Footer */}
         {cart.length > 0 && (
-          <div style={{ padding: '16px 20px', borderTop: '1px solid #1f1f24' }}>
-            {/* Summary */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-              <span style={{ fontSize: '13px', color: '#71717a' }}>{totalItems} item{totalItems !== 1 ? 's' : ''}</span>
-              <span style={{ fontSize: '13px', color: '#71717a' }}>Subtotal</span>
+          <div className="border-t border-stone-200 p-5">
+            <div className="mb-3 flex justify-between text-sm text-slate-600">
+              <span>
+                {totalItems} item{totalItems !== 1 ? 's' : ''}
+              </span>
+              <span>Subtotal</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-              <span style={{ fontSize: '20px', fontWeight: '700', color: '#f97316' }}>₱{totalPrice.toFixed(2)}</span>
-              <span style={{ fontSize: '13px', color: '#52525b', alignSelf: 'flex-end' }}>+ delivery fee</span>
-            </div>
-
-            {/* View store button */}
+            <p className="mb-4 font-['Libre_Baskerville'] text-2xl font-bold text-slate-900">
+              ₱{totalPrice.toFixed(2)}
+            </p>
             {storeId && (
               <button
-                onClick={() => { onClose(); navigate(`/products/${storeId}`); }}
-                style={{ width: '100%', padding: '10px', backgroundColor: 'transparent', color: '#71717a', border: '1px solid #27272a', borderRadius: '9px', cursor: 'pointer', fontSize: '13px', fontWeight: '500', fontFamily: 'inherit', marginBottom: '8px' }}
+                type="button"
+                onClick={() => {
+                  onClose();
+                  navigate(`/products/${storeId}`);
+                }}
+                className="mb-2 w-full rounded-lg border border-stone-300 py-2.5 text-sm font-medium text-slate-700 hover:bg-stone-50"
               >
-                ← Continue Shopping
+                Continue shopping
               </button>
             )}
-
-            {/* Checkout button */}
             <button
-              onClick={handleCheckout}
-              style={{ width: '100%', padding: '13px', backgroundColor: '#f97316', color: '#fff', border: 'none', borderRadius: '9px', cursor: 'pointer', fontSize: '15px', fontWeight: '700', fontFamily: 'inherit', boxShadow: '0 4px 16px rgba(249,115,22,0.35)' }}
+              type="button"
+              onClick={() => {
+                onClose();
+                onCheckout?.();
+                navigate('/checkout');
+              }}
+              className="w-full rounded-lg bg-[#1e4d3a] py-3 text-sm font-semibold text-white hover:bg-[#163d2f]"
             >
-              Checkout → ₱{totalPrice.toFixed(2)}
+              Checkout · ₱{totalPrice.toFixed(2)}
             </button>
           </div>
         )}
@@ -180,7 +264,170 @@ const CartDrawer = ({ open, onClose, onCheckout }) => {
   );
 };
 
-  const BuyerDashboard = () => {
+// ── Order card ────────────────────────────────────────────────────────────────
+const OrderCard = ({
+  order,
+  expanded,
+  onToggle,
+  onReorder,
+  onCancel,
+  reordering,
+  reorderSuccess,
+  getStepIndex,
+  navigate,
+  onReceipt,
+}) => {
+  const isCancelled = order.status === 'CANCELLED';
+  const isDelivered = order.status === 'DELIVERED';
+  const currentStep = getStepIndex(order.status);
+  const st = statusStyles[order.status] || statusStyles.PENDING;
+
+  return (
+    <article
+      className={`overflow-hidden rounded-xl border bg-white transition-shadow ${
+        expanded ? 'border-[#1e4d3a]/30 shadow-md' : 'border-stone-200 shadow-sm'
+      } ${isCancelled ? 'border-red-200' : ''}`}
+    >
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full flex-wrap items-start justify-between gap-3 p-4 text-left hover:bg-stone-50/80 sm:p-5"
+      >
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-mono text-sm font-semibold text-slate-900">Order #{order.id}</span>
+            <span className="text-xs text-slate-400">
+              {new Date(order.createdAt).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+              })}
+            </span>
+          </div>
+          <p className="mt-1 text-sm text-slate-600">{order.storeName || `Store #${order.storeId}`}</p>
+          <p className="mt-1 text-lg font-bold text-[#1e4d3a]">₱{order.totalAmount}</p>
+        </div>
+        <div className="flex flex-col items-end gap-2">
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${st.bg} ${st.text} ${st.border}`}
+          >
+            <span className={`h-1.5 w-1.5 rounded-full ${st.dot}`} />
+            {order.status?.replace(/_/g, ' ')}
+          </span>
+          <span className="text-xs text-slate-400">{expanded ? 'Hide details' : 'Track order'}</span>
+        </div>
+      </button>
+
+      {expanded && (
+        <div className="border-t border-stone-100 px-4 pb-4 pt-3 sm:px-5 sm:pb-5">
+          {isCancelled ? (
+            <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-center text-sm text-red-800">
+              This order was cancelled.
+            </p>
+          ) : (
+            <>
+              <ol className="space-y-0 pl-1">
+                {STATUS_STEPS.map((step, idx) => {
+                  const done = currentStep >= idx;
+                  const active = currentStep === idx;
+                  return (
+                    <li key={step.key} className="relative flex gap-3 pb-5 last:pb-0">
+                      {idx < STATUS_STEPS.length - 1 && (
+                        <span
+                          className={`absolute left-[11px] top-6 h-[calc(100%-12px)] w-0.5 ${
+                            done && currentStep > idx ? 'bg-[#1e4d3a]' : 'bg-stone-200'
+                          }`}
+                        />
+                      )}
+                      <span
+                        className={`relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                          done
+                            ? 'bg-[#1e4d3a] text-white'
+                            : 'border-2 border-stone-300 bg-white text-stone-400'
+                        } ${active ? 'ring-2 ring-[#1e4d3a]/25' : ''}`}
+                      >
+                        {done ? '✓' : idx + 1}
+                      </span>
+                      <div className="pt-0.5">
+                        <span
+                          className={`text-sm ${done ? 'font-medium text-slate-900' : 'text-slate-500'}`}
+                        >
+                          {step.label}
+                        </span>
+                        {active && (
+                          <span className="ml-2 text-xs font-semibold text-[#1e4d3a]">Current</span>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ol>
+              {!isDelivered && (
+                <p className="mt-3 rounded-lg bg-[#faf9f7] px-4 py-3 text-sm text-slate-600 ring-1 ring-stone-200">
+                  {order.status === 'PENDING' && 'Waiting for the store to confirm your order.'}
+                  {order.status === 'CONFIRMED' && 'Your order was confirmed and will be prepared soon.'}
+                  {order.status === 'PREPARING' && 'The store is preparing your order now.'}
+                  {order.status === 'OUT_FOR_DELIVERY' && 'Your order is on the way.'}
+                </p>
+              )}
+            </>
+          )}
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => navigate(`/chat/${order.storeOwnerId || order.storeId}`)}
+              className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-stone-50"
+            >
+              Message store
+            </button>
+            <button
+              type="button"
+              onClick={() => onReceipt(order)}
+              className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-stone-50"
+            >
+              Receipt
+            </button>
+            {order.status === 'PENDING' && (
+              <button
+                type="button"
+                onClick={() => onCancel(order.id)}
+                className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-100"
+              >
+                Cancel order
+              </button>
+            )}
+            {isDelivered && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => navigate('/buyer/ratings')}
+                  className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900"
+                >
+                  Rate order
+                </button>
+                <button
+                  type="button"
+                  onClick={() => !reordering && onReorder(order)}
+                  disabled={reordering}
+                  className={`rounded-lg border px-3 py-2 text-xs font-semibold ${
+                    reorderSuccess
+                      ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
+                      : 'border-[#1e4d3a]/30 bg-[#eef4f1] text-[#1e4d3a] hover:bg-[#e0ebe6]'
+                  }`}
+                >
+                  {reordering ? 'Placing…' : reorderSuccess ? 'Reordered' : 'Reorder'}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </article>
+  );
+};
+
+// ── Dashboard ─────────────────────────────────────────────────────────────────
+const BuyerDashboard = () => {
   const navigate = useNavigate();
   const [stores, setStores] = useState([]);
   const [orders, setOrders] = useState([]);
@@ -198,19 +445,19 @@ const CartDrawer = ({ open, onClose, onCheckout }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showCart, setShowCart] = useState(false);
   const [cartCount, setCartCount] = useState(0);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const notifRef = useRef(null);
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const [unreadChats, setUnreadChats] = useState(0);
-  const [unreadFromId, setUnreadFromId] = useState(null);
   const [conversations, setConversations] = useState([]);
   const [storeRatings, setStoreRatings] = useState({});
+  const [profilePhoto, setProfilePhoto] = useState(null);
+  const [displayName, setDisplayName] = useState(user.username);
 
-  // Refresh cart count whenever localStorage changes
   const refreshCartCount = useCallback(() => {
     const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-    const total = cart.reduce((s, i) => s + i.quantity, 0);
-    setCartCount(total);
+    setCartCount(cart.reduce((s, i) => s + i.quantity, 0));
   }, []);
 
   useEffect(() => {
@@ -223,7 +470,6 @@ const CartDrawer = ({ open, onClose, onCheckout }) => {
     try {
       const storesRes = await getStores();
       let totalUnread = 0;
-      let firstUnreadId = null;
       for (const store of storesRes.data) {
         const ownerId = store.ownerId;
         if (!ownerId) continue;
@@ -231,21 +477,17 @@ const CartDrawer = ({ open, onClose, onCheckout }) => {
         const msgs = res.data || [];
         const lastSeenKey = `chat_seen_${user.id}_${ownerId}`;
         const lastSeen = localStorage.getItem(lastSeenKey);
-        const unread = msgs.filter(m =>
-          m.senderId !== user.id &&
-          (!lastSeen || new Date(m.createdAt) > new Date(lastSeen))
-        );
-        if (unread.length > 0 && !firstUnreadId) firstUnreadId = ownerId;
-        totalUnread += unread.length;
+        totalUnread += msgs.filter(
+          (m) => m.senderId !== user.id && (!lastSeen || new Date(m.createdAt) > new Date(lastSeen))
+        ).length;
       }
       setUnreadChats(totalUnread);
-      setUnreadFromId(firstUnreadId);
     } catch (err) {
       console.error('Failed to check unread messages', err);
     }
   }, [user.id]);
 
-  const unreadCount = notifications.filter(n => !n.is_read).length;
+  const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   const fetchConversations = useCallback(async () => {
     try {
@@ -260,32 +502,28 @@ const CartDrawer = ({ open, onClose, onCheckout }) => {
         const lastMsg = msgs[msgs.length - 1];
         const lastSeenKey = `chat_seen_${user.id}_${ownerId}`;
         const lastSeen = localStorage.getItem(lastSeenKey);
-        const unread = msgs.filter(m =>
-          Number(m.senderId) !== Number(user.id) &&
-          (!lastSeen || new Date(m.createdAt) > new Date(lastSeen))
+        const unread = msgs.filter(
+          (m) =>
+            Number(m.senderId) !== Number(user.id) &&
+            (!lastSeen || new Date(m.createdAt) > new Date(lastSeen))
         ).length;
         convos.push({ ownerId, storeName: store.name, lastMsg, unread });
       }
       setConversations(convos);
-    } catch (err) { console.error('Failed to fetch conversations', err); }
+    } catch (err) {
+      console.error('Failed to fetch conversations', err);
+    }
   }, [user.id]);
-
-  const STATUS_STEPS = [
-    { key: 'PENDING',          label: 'Order Placed', emoji: '📋' },
-    { key: 'CONFIRMED',        label: 'Confirmed',    emoji: '✅' },
-    { key: 'PREPARING',        label: 'Preparing',    emoji: '👨‍🍳' },
-    { key: 'OUT_FOR_DELIVERY', label: 'On the Way',   emoji: '🛵' },
-    { key: 'DELIVERED',        label: 'Delivered',    emoji: '📦' },
-  ];
 
   const fetchNotifications = useCallback(async () => {
     if (!user.id) return;
-    try { const res = await getNotifications(user.id); setNotifications(res.data); }
-    catch (err) { console.error('Failed to load notifications', err); }
+    try {
+      const res = await getNotifications(user.id);
+      setNotifications(res.data);
+    } catch (err) {
+      console.error('Failed to load notifications', err);
+    }
   }, [user.id]);
-
-  const [profilePhoto, setProfilePhoto] = useState(null);
-  const [displayName, setDisplayName] = useState(user.username);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -293,36 +531,52 @@ const CartDrawer = ({ open, onClose, onCheckout }) => {
         const res = await springApi.get('/users/profile');
         if (res.data.profilePhoto) setProfilePhoto(`http://localhost:8080${res.data.profilePhoto}`);
         if (res.data.displayName) setDisplayName(res.data.displayName);
-      } catch (err) {}
+      } catch {
+        /* ignore */
+      }
     };
     fetchProfile();
   }, []);
 
   const fetchStoreRatings = useCallback(async (storeList) => {
     const results = {};
-    await Promise.all(storeList.map(async (store) => {
-      try {
-        const { phpApi } = await import('../services/api');
-        const res = await phpApi.get(`/ratings/store/${store.id}`);
-        results[store.id] = { average: res.data.average_rating, total: res.data.total_ratings };
-      } catch {}
-    }));
+    await Promise.all(
+      storeList.map(async (store) => {
+        try {
+          const { phpApi } = await import('../services/api');
+          const res = await phpApi.get(`/ratings/store/${store.id}`);
+          results[store.id] = { average: res.data.average_rating, total: res.data.total_ratings };
+        } catch {
+          /* ignore */
+        }
+      })
+    );
     setStoreRatings(results);
   }, []);
 
-  const fetchData = useCallback(async (silent = false) => {
-    try {
-      if (!silent) setLoading(true);
-      const [storesRes, ordersRes] = await Promise.all([getStores(), getOrders()]);
-      setStores(storesRes.data);
-      setOrders(ordersRes.data);
-      setLastRefreshed(new Date());
-      fetchStoreRatings(storesRes.data);
-    } catch (err) { console.error('Failed to load data', err); }
-    finally { setLoading(false); }
-  }, []);
+  const fetchData = useCallback(
+    async (silent = false) => {
+      try {
+        if (!silent) setLoading(true);
+        const [storesRes, ordersRes] = await Promise.all([getStores(), getOrders()]);
+        setStores(storesRes.data);
+        setOrders(ordersRes.data);
+        setLastRefreshed(new Date());
+        fetchStoreRatings(storesRes.data);
+      } catch (err) {
+        console.error('Failed to load data', err);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [fetchStoreRatings]
+  );
 
-  useEffect(() => { fetchData(); fetchNotifications(); fetchConversations(); }, [fetchData, fetchNotifications, fetchConversations]);
+  useEffect(() => {
+    fetchData();
+    fetchNotifications();
+    fetchConversations();
+  }, [fetchData, fetchNotifications, fetchConversations]);
 
   useEffect(() => {
     if (activeTab !== 'orders') return;
@@ -352,49 +606,53 @@ const CartDrawer = ({ open, onClose, onCheckout }) => {
   const handleMarkRead = async (id) => {
     try {
       await markNotificationRead(id);
-      setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
-    } catch (err) { console.error('Failed to mark notification read', err); }
+      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const handleMarkAllRead = async () => {
     if (!user.id) return;
     try {
       await markAllNotificationsRead(user.id);
-      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
-    } catch (err) { console.error('Failed to mark all read', err); }
+      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  const getNotifIcon = (type) => ({ order_placed: '📋', order_confirmed: '✅', order_preparing: '👨‍🍳', order_out_for_delivery: '🛵', order_delivered: '📦', order_cancelled: '❌', general: '🔔' }[type] || '🔔');
-  const getNotifColor = (type) => ({ order_placed: '#f59e0b', order_confirmed: '#3b82f6', order_preparing: '#8b5cf6', order_out_for_delivery: '#06b6d4', order_delivered: '#22c55e', order_cancelled: '#ef4444', general: '#f97316' }[type] || '#f97316');
-
-  const handleLogout = () => { localStorage.clear(); navigate('/login'); };
+  const handleLogout = () => {
+    localStorage.clear();
+    navigate('/login');
+  };
 
   const toggleFavorite = (storeId, e) => {
     e.stopPropagation();
-    const updated = favorites.includes(storeId) ? favorites.filter(id => id !== storeId) : [...favorites, storeId];
+    const updated = favorites.includes(storeId)
+      ? favorites.filter((id) => id !== storeId)
+      : [...favorites, storeId];
     setFavorites(updated);
     localStorage.setItem('favorites', JSON.stringify(updated));
   };
 
-  const filteredStores = stores.filter(store => {
-    const matchesSearch = store.name?.toLowerCase().includes(search.toLowerCase());
-    const matchesFav = showFavoritesOnly ? favorites.includes(store.id) : true;
-    return matchesSearch && matchesFav;
-  });
-
-  const getStatusColor = (status) => ({ PENDING: '#f59e0b', CONFIRMED: '#3b82f6', PREPARING: '#8b5cf6', OUT_FOR_DELIVERY: '#06b6d4', DELIVERED: '#22c55e', CANCELLED: '#ef4444' }[status] || '#6b7280');
-  const getStatusEmoji = (status) => ({ PENDING: '⏳', CONFIRMED: '✅', PREPARING: '👨‍🍳', OUT_FOR_DELIVERY: '🛵', DELIVERED: '📦', CANCELLED: '✕' }[status] || '•');
-  const getStepIndex = (status) => STATUS_STEPS.findIndex(s => s.key === status);
+  const getStepIndex = (status) => STATUS_STEPS.findIndex((s) => s.key === status);
 
   const handleReorder = async (order) => {
     setReordering(order.id);
     try {
-      await placeOrder({ storeId: order.storeId, items: (order.items || []).map(item => ({ productId: item.productId, quantity: item.quantity })) });
+      await placeOrder({
+        storeId: order.storeId,
+        items: (order.items || []).map((item) => ({ productId: item.productId, quantity: item.quantity })),
+      });
       setReorderSuccess(order.id);
       setTimeout(() => setReorderSuccess(null), 3000);
       fetchData(true);
-    } catch (err) { console.error('Reorder failed', err); }
-    finally { setReordering(null); }
+    } catch (err) {
+      console.error('Reorder failed', err);
+    } finally {
+      setReordering(null);
+    }
   };
 
   const handleCancel = async (orderId) => {
@@ -408,553 +666,678 @@ const CartDrawer = ({ open, onClose, onCheckout }) => {
     }
   };
 
-  const activeOrders = orders.filter(o => o.status !== 'DELIVERED' && o.status !== 'CANCELLED');
-  const pastOrders = orders.filter(o => o.status === 'DELIVERED' || o.status === 'CANCELLED');
+  const activeOrders = orders.filter((o) => o.status !== 'DELIVERED' && o.status !== 'CANCELLED');
+  const pastOrders = orders.filter((o) => o.status === 'DELIVERED' || o.status === 'CANCELLED');
+
+  const searchQuery = search.trim().toLowerCase();
+  const matchesSearchText = (...parts) => {
+    if (!searchQuery) return true;
+    return parts.some((p) => p != null && String(p).toLowerCase().includes(searchQuery));
+  };
+
+  const filteredStores = stores.filter((store) => {
+    const matchesSearch = matchesSearchText(store.name, store.address, store.description);
+    const matchesFav = showFavoritesOnly ? favorites.includes(store.id) : true;
+    return matchesSearch && matchesFav;
+  });
+
+  const orderMatchesSearch = (order) =>
+    matchesSearchText(
+      order.id,
+      order.storeName,
+      order.storeId,
+      order.status?.replace(/_/g, ' ')
+    );
+
+  const filteredActiveOrders = activeOrders.filter(orderMatchesSearch);
+  const filteredPastOrders = pastOrders.filter(orderMatchesSearch);
+
+  const filteredConversations = conversations.filter((convo) =>
+    matchesSearchText(convo.storeName, convo.lastMsg?.message)
+  );
+
+  const tabs = [
+    {
+      id: 'stores',
+      label: 'Stores',
+      icon: (
+        <>
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+          <path d="M9 22V12h6v10" />
+        </>
+      ),
+    },
+    {
+      id: 'orders',
+      label: 'Orders',
+      count: activeOrders.length,
+      icon: (
+        <>
+          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+          <path d="M3.3 7 12 12l8.7-5M12 22V12" />
+        </>
+      ),
+    },
+    {
+      id: 'chats',
+      label: 'Messages',
+      count: unreadChats,
+      icon: <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8z" />,
+    },
+    {
+      id: 'feedback',
+      label: 'Feedback',
+      icon: (
+        <>
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+        </>
+      ),
+    },
+  ];
+
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId);
+    setSidebarOpen(false);
+    setShowNotifications(false);
+    if (tabId === 'chats') {
+      setUnreadChats(0);
+      fetchConversations();
+    }
+  };
+
+  const TopIconButton = ({ children, onClick, active, badge, title }) => (
+    <button
+      type="button"
+      title={title}
+      onClick={onClick}
+      className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition-colors ${
+        active
+          ? 'border-[#1e4d3a]/30 bg-[#eef4f1] text-[#1e4d3a]'
+          : 'border-stone-200 bg-white text-slate-600 hover:bg-stone-50'
+      }`}
+    >
+      {children}
+      {badge > 0 && (
+        <span className="absolute -right-1 -top-1 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-[#1e4d3a] px-1 text-[10px] font-bold text-white">
+          {badge > 9 ? '9+' : badge}
+        </span>
+      )}
+    </button>
+  );
+
+  const searchPlaceholder =
+    activeTab === 'stores'
+      ? 'Search stores…'
+      : activeTab === 'orders'
+        ? 'Search orders…'
+        : activeTab === 'chats'
+          ? 'Search messages…'
+          : 'Search stores, orders, messages…';
 
   return (
-    <div style={styles.root}>
-      {/* Cart Drawer */}
+    <div className="min-h-screen bg-[#f7f5f1] font-['DM_Sans',system-ui,sans-serif] text-slate-800 antialiased">
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Libre+Baskerville:ital,wght@0,400;0,700&display=swap"
+      />
+
       <CartDrawer open={showCart} onClose={() => { setShowCart(false); refreshCartCount(); }} />
 
-      {/* Nav */}
-      <nav style={styles.nav}>
-        <div style={styles.navLeft}>
-          <span style={styles.navLogo}>◈</span>
-          <span style={styles.navBrand}>NearBuy</span>
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+          aria-hidden
+        />
+      )}
+
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 flex w-[240px] flex-col overflow-hidden border-r border-stone-200 bg-white shadow-lg transition-transform duration-300 ease-out lg:translate-x-0 ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <div className="border-b border-stone-100 px-4 py-5">
+          <Link to="/" className="flex items-center gap-2.5 no-underline" onClick={() => setSidebarOpen(false)}>
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900 text-sm font-bold text-white">
+              N
+            </span>
+            <span className="font-['Libre_Baskerville'] text-lg font-bold text-slate-900">NearBuy</span>
+          </Link>
         </div>
 
-        <div style={styles.navTabs}>
-          <button style={{ ...styles.navTab, ...(activeTab === 'stores' ? styles.navTabActive : {}) }} onClick={() => setActiveTab('stores')}>
-            ▦ Stores
-          </button>
-          <button style={{ ...styles.navTab, ...(activeTab === 'orders' ? styles.navTabActive : {}) }} onClick={() => setActiveTab('orders')}>
-            ◫ My Orders
-            {activeOrders.length > 0 && <span style={styles.badge}>{activeOrders.length}</span>}
-          </button>
-          <button style={{ ...styles.navTab, ...(activeTab === 'chats' ? styles.navTabActive : {}) }} onClick={() => { setActiveTab('chats'); setUnreadChats(0); setUnreadFromId(null); fetchConversations(); }}>
-            💬 Chats
-            {unreadChats > 0 && <span style={styles.badge}>{unreadChats > 9 ? '9+' : unreadChats}</span>}
-          </button>
-          <button style={{ ...styles.navTab, ...(activeTab === 'feedback' ? styles.navTabActive : {}) }} onClick={() => setActiveTab('feedback')}>
-            📝 Feedback
-          </button>
-        </div>
+        <nav className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-4">
+          <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400">Menu</p>
+          <ul className="space-y-1">
+            {tabs.map((tab) => (
+              <li key={tab.id}>
+                <button
+                  type="button"
+                  onClick={() => handleTabChange(tab.id)}
+                  className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                    activeTab === tab.id
+                      ? 'bg-[#1e4d3a] text-white shadow-sm'
+                      : 'text-slate-600 hover:bg-stone-100'
+                  }`}
+                >
+                  <Icon className="h-[18px] w-[18px] shrink-0">{tab.icon}</Icon>
+                  <span className="flex-1 text-left">{tab.label}</span>
+                  {tab.count > 0 && (
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                        activeTab === tab.id ? 'bg-white/20 text-white' : 'bg-[#1e4d3a] text-white'
+                      }`}
+                    >
+                      {tab.count > 9 ? '9+' : tab.count}
+                    </span>
+                  )}
+                </button>
+              </li>
+            ))}
+          </ul>
 
-        <div style={styles.navRight}>
-          {/* Cart Button */}
+        </nav>
+
+        <div className="border-t border-stone-100 p-3">
           <button
-            style={{ ...styles.iconBtn, ...(cartCount > 0 ? { borderColor: '#f97316', backgroundColor: '#1c1a16' } : {}) }}
-            onClick={() => setShowCart(true)}
-            title="Cart"
+            type="button"
+            onClick={() => {
+              navigate('/profile');
+              setSidebarOpen(false);
+            }}
+            className="mb-2 flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-stone-100"
           >
-            🛒
-            {cartCount > 0 && (
-              <span style={{ ...styles.iconBadge, backgroundColor: '#f97316' }}>
-                {cartCount > 9 ? '9+' : cartCount}
+            {profilePhoto ? (
+              <img src={profilePhoto} alt="" className="h-9 w-9 shrink-0 rounded-full object-cover ring-2 ring-stone-200" />
+            ) : (
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#1e4d3a] text-sm font-bold text-white">
+                {user.username?.[0]?.toUpperCase() || 'U'}
               </span>
             )}
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-semibold text-slate-900">{displayName}</span>
+              <span className="block text-xs text-slate-500">View profile</span>
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="w-full rounded-lg border border-stone-200 py-2.5 text-sm font-medium text-slate-600 hover:bg-stone-50"
+          >
+            Logout
+          </button>
+        </div>
+      </aside>
+
+      <header className="sticky top-0 z-30 border-b border-stone-200/80 bg-[#f7f5f1]/95 backdrop-blur-md lg:ml-[240px]">
+        <div className="flex flex-wrap items-center gap-2 px-4 py-3 sm:gap-3">
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(true)}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-stone-200 bg-white text-slate-700 lg:hidden"
+            aria-label="Open menu"
+          >
+            <Icon className="h-5 w-5">
+              <path d="M4 6h16M4 12h16M4 18h16" />
+            </Icon>
           </button>
 
-          {/* Notifications */}
-          <div style={{ position: 'relative' }} ref={notifRef}>
-            <button style={{ ...styles.iconBtn, backgroundColor: showNotifications ? '#1f1f2e' : '#111114', borderColor: showNotifications ? '#f97316' : '#27272a' }}
-              onClick={() => setShowNotifications(!showNotifications)} title="Notifications">
-              🔔
-              {unreadCount > 0 && <span style={styles.iconBadge}>{unreadCount > 9 ? '9+' : unreadCount}</span>}
-            </button>
-
-            {showNotifications && (
-              <div style={styles.notifPanel}>
-                <div style={styles.notifHeader}>
-                  <span style={styles.notifHeaderTitle}>Notifications</span>
-                  {unreadCount > 0 && <button style={styles.markAllBtn} onClick={handleMarkAllRead}>Mark all read</button>}
-                </div>
-                {notifications.length === 0 ? (
-                  <div style={styles.notifEmpty}>
-                    <span style={{ fontSize: '32px' }}>🔔</span>
-                    <p style={{ color: '#52525b', fontSize: '13px', margin: '10px 0 0' }}>No notifications yet</p>
-                  </div>
-                ) : (
-                  <div style={styles.notifList}>
-                    {notifications.map(n => (
-                      <div key={n.id}
-                        style={{ ...styles.notifItem, backgroundColor: n.is_read ? 'transparent' : `${getNotifColor(n.type)}08`, borderLeft: `3px solid ${n.is_read ? 'transparent' : getNotifColor(n.type)}` }}
-                        onClick={() => !n.is_read && handleMarkRead(n.id)}>
-                        <div style={{ ...styles.notifIconWrap, backgroundColor: `${getNotifColor(n.type)}18` }}>
-                          <span style={{ fontSize: '16px' }}>{getNotifIcon(n.type)}</span>
-                        </div>
-                        <div style={styles.notifContent}>
-                          <p style={styles.notifTitle}>{n.title}</p>
-                          <p style={styles.notifMsg}>{n.message}</p>
-                          <p style={styles.notifTime}>{new Date(n.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
-                        </div>
-                        {!n.is_read && <div style={{ ...styles.notifDot, backgroundColor: getNotifColor(n.type) }} />}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+          <div className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-stone-300 bg-white px-3">
+            <Icon className="h-4 w-4 shrink-0 text-slate-400">
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.3-4.3" />
+            </Icon>
+            <input
+              type="search"
+              placeholder={searchPlaceholder}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="min-w-0 flex-1 border-0 bg-transparent py-2 text-sm outline-none placeholder:text-slate-400"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                className="shrink-0 text-slate-400 hover:text-slate-600"
+                aria-label="Clear search"
+              >
+                <Icon className="h-4 w-4">
+                  <path d="M18 6L6 18M6 6l12 12" />
+                </Icon>
+              </button>
             )}
           </div>
 
-          {/* Favorites Filter */}
-          <button
-            style={{ ...styles.iconBtn, backgroundColor: showFavoritesOnly ? '#2d1515' : '#111114', borderColor: showFavoritesOnly ? '#ef4444' : '#27272a' }}
-            onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-            title={showFavoritesOnly ? 'Show all stores' : 'Show favorites'}
-          >
-            {showFavoritesOnly ? '❤️' : '🤍'}
-            {favorites.length > 0 && !showFavoritesOnly && <span style={{ ...styles.iconBadge, backgroundColor: '#ef4444' }}>{favorites.length}</span>}
-          </button>
+          <div className="flex shrink-0 items-center gap-1.5">
+            <TopIconButton title="Cart" badge={cartCount} active={cartCount > 0} onClick={() => setShowCart(true)}>
+              <Icon className="h-[18px] w-[18px]">
+                <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
+                <path d="M3 6h18" />
+              </Icon>
+            </TopIconButton>
 
-          <button style={styles.iconBtn} onClick={() => navigate('/buyer/ratings')} title="Ratings">⭐</button>
-
-          <div style={styles.navDivider} />
-
-          <button style={styles.profileChip} onClick={() => navigate('/profile')} title="Edit Profile">
-            {profilePhoto ? (
-              <img src={profilePhoto} alt="profile" style={{ width: '26px', height: '26px', borderRadius: '50%', objectFit: 'cover' }} />
-            ) : (
-              <div style={styles.profileAvatar}>{user.username?.[0]?.toUpperCase() || 'U'}</div>
-            )}
-            <span style={styles.profileName}>{displayName}</span>
-          </button>
-
-          <button style={styles.logoutBtn} onClick={handleLogout}>Logout</button>
-        </div>
-      </nav>
-
-      <main style={styles.main}>
-
-        {/* STORES TAB */}
-        {activeTab === 'stores' && (
-          <div style={styles.tabContent}>
-            <div style={styles.pageHeader}>
-              <div>
-                <h1 style={styles.pageTitle}>
-                  {showFavoritesOnly ? '❤️ Favorite Stores' : 'Discover Stores'}
-                </h1>
-                <p style={styles.pageSubtitle}>
-                  {showFavoritesOnly
-                    ? `${filteredStores.length} saved store${filteredStores.length !== 1 ? 's' : ''}`
-                    : `${stores.length} stores near you`}
-                </p>
-              </div>
-              <div style={styles.headerActions}>
-                {showFavoritesOnly && (
-                  <button style={styles.clearFavBtn} onClick={() => setShowFavoritesOnly(false)}>← Show All</button>
-                )}
-                <div style={styles.searchBar}>
-                  <span style={styles.searchIcon}>⌕</span>
-                  <input
-                    style={styles.searchInput}
-                    type="text"
-                    placeholder="Search stores..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                  />
-                  {search && <button style={styles.clearSearch} onClick={() => setSearch('')}>✕</button>}
+            <div className="relative" ref={notifRef}>
+              <TopIconButton
+                title="Notifications"
+                badge={unreadCount}
+                active={showNotifications}
+                onClick={() => setShowNotifications(!showNotifications)}
+              >
+                <Icon className="h-[18px] w-[18px]">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                </Icon>
+              </TopIconButton>
+              {showNotifications && (
+                <div className="absolute right-0 top-full z-[300] mt-2 w-[min(100vw-2rem,22rem)] overflow-hidden rounded-xl border border-stone-200 bg-white shadow-xl animate-[fadeUp_0.15s_ease]">
+                  <div className="flex items-center justify-between border-b border-stone-100 px-4 py-3">
+                    <span className="text-sm font-semibold text-slate-900">Notifications</span>
+                    {unreadCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleMarkAllRead}
+                        className="text-xs font-semibold text-[#1e4d3a] hover:underline"
+                      >
+                        Mark all read
+                      </button>
+                    )}
+                  </div>
+                  {notifications.length === 0 ? (
+                    <p className="px-4 py-8 text-center text-sm text-slate-500">No notifications yet</p>
+                  ) : (
+                    <ul className="max-h-80 overflow-y-auto">
+                      {notifications.map((n) => (
+                        <li key={n.id}>
+                          <button
+                            type="button"
+                            onClick={() => !n.is_read && handleMarkRead(n.id)}
+                            className={`flex w-full gap-3 border-b border-stone-50 px-4 py-3 text-left hover:bg-stone-50 ${
+                              !n.is_read ? 'bg-[#faf9f7]' : ''
+                            }`}
+                          >
+                            <span
+                              className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold uppercase ${
+                                notifTypeStyle[n.type] || notifTypeStyle.general
+                              }`}
+                            >
+                              {(n.type || 'general').replace('order_', '').slice(0, 2)}
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block text-sm font-semibold text-slate-900">{n.title}</span>
+                              <span className="block text-xs text-slate-500 line-clamp-2">{n.message}</span>
+                              <span className="mt-1 block text-[10px] text-slate-400">
+                                {new Date(n.created_at).toLocaleString()}
+                              </span>
+                            </span>
+                            {!n.is_read && (
+                              <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-[#1e4d3a]" />
+                            )}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
-              </div>
+              )}
+            </div>
+
+            <TopIconButton
+              title={showFavoritesOnly ? 'Show all stores' : 'Favorites only'}
+              badge={!showFavoritesOnly && favorites.length ? favorites.length : 0}
+              active={showFavoritesOnly}
+              onClick={() => {
+                if (activeTab !== 'stores') handleTabChange('stores');
+                setShowFavoritesOnly(!showFavoritesOnly);
+              }}
+            >
+              <Icon className={`h-[18px] w-[18px] ${showFavoritesOnly ? 'fill-red-500 text-red-500' : ''}`}>
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+              </Icon>
+            </TopIconButton>
+
+            <TopIconButton title="My ratings" onClick={() => navigate('/buyer/ratings')}>
+              <Icon className="h-[18px] w-[18px]">
+                <path d="M12 2.5l2.2 4.5 5 .7-3.6 3.5.9 5-4.5-2.4-4.5 2.4.9-5-3.6-3.5 5-.7L12 2.5z" />
+              </Icon>
+            </TopIconButton>
+          </div>
+        </div>
+      </header>
+
+      <main className="min-h-screen px-4 py-6 sm:px-6 sm:py-8 lg:ml-[240px]">
+        <div className="mx-auto max-w-6xl">
+        {activeTab === 'stores' && (
+          <>
+            <div className="mb-6">
+              <p className="text-sm text-slate-500">Hello, {displayName}</p>
+              <h1 className="mt-1 font-['Libre_Baskerville'] text-2xl font-bold text-slate-900 sm:text-3xl">
+                {showFavoritesOnly ? 'Saved stores' : 'Discover stores'}
+              </h1>
+              <p className="mt-1 text-sm text-slate-500">
+                {showFavoritesOnly
+                  ? `${filteredStores.length} favorite${filteredStores.length !== 1 ? 's' : ''}`
+                  : `${stores.length} stores near you`}
+                {searchQuery && ` · ${filteredStores.length} match${filteredStores.length !== 1 ? 'es' : ''}`}
+              </p>
+              {showFavoritesOnly && (
+                <button
+                  type="button"
+                  onClick={() => setShowFavoritesOnly(false)}
+                  className="mt-3 rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-white"
+                >
+                  Show all stores
+                </button>
+              )}
+            </div>
+
+            <div className="mb-6 grid grid-cols-3 gap-2 sm:gap-3">
+              {[
+                { label: 'Active orders', value: activeOrders.length },
+                { label: 'Cart items', value: cartCount },
+                { label: 'Saved stores', value: favorites.length },
+              ].map((stat) => (
+                <div
+                  key={stat.label}
+                  className="rounded-xl border border-stone-200 bg-white px-3 py-3 text-center sm:px-4"
+                >
+                  <p className="font-['Libre_Baskerville'] text-xl font-bold text-[#1e4d3a] sm:text-2xl">
+                    {stat.value}
+                  </p>
+                  <p className="text-[10px] uppercase tracking-wide text-slate-500 sm:text-xs">{stat.label}</p>
+                </div>
+              ))}
             </div>
 
             {loading ? (
-              <div style={styles.centerState}>
-                <div style={styles.spinner} />
-                <p style={styles.stateText}>Finding stores near you...</p>
+              <div className="flex flex-col items-center py-24">
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-stone-200 border-t-[#1e4d3a]" />
+                <p className="mt-4 text-sm text-slate-500">Loading stores…</p>
               </div>
             ) : filteredStores.length === 0 ? (
-              <div style={styles.centerState}>
-                <div style={{ fontSize: '48px', marginBottom: '12px' }}>{showFavoritesOnly ? '🤍' : '▦'}</div>
-                <p style={styles.stateTitle}>{showFavoritesOnly ? 'No favorites yet' : 'No stores found'}</p>
-                <p style={styles.stateText}>{showFavoritesOnly ? 'Tap 🤍 on a store card to save it here' : 'Try a different search'}</p>
+              <div className="rounded-2xl border border-dashed border-stone-300 bg-white py-16 text-center">
+                <p className="font-semibold text-slate-800">
+                  {showFavoritesOnly ? 'No favorites yet' : 'No stores found'}
+                </p>
+                <p className="mt-1 text-sm text-slate-500">
+                  {showFavoritesOnly ? 'Save a store with the heart icon.' : 'Try another search term.'}
+                </p>
               </div>
             ) : (
-              <div style={styles.storeGrid}>
-                {filteredStores.map((store, i) => (
-                  <div key={store.id}
-                    style={{ ...styles.storeCard, animationDelay: `${i * 40}ms`, borderColor: favorites.includes(store.id) ? '#ef444430' : '#1f1f24' }}
-                    onClick={() => navigate(`/store/${store.id}`)}>
-                    <div style={styles.storeCardTop}>
-                      <div style={styles.storeAvatar}>
-                        {store.imageUrl
-                          ? <img src={store.imageUrl.startsWith('/api') ? `http://localhost:8080${store.imageUrl}` : store.imageUrl} alt={store.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '12px' }} />
-                          : '🏪'
-                        }
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {filteredStores.map((store) => {
+                  const isFav = favorites.includes(store.id);
+                  const isOpen = store.status === 'ACTIVE';
+                  const rating = storeRatings[store.id];
+                  return (
+                    <article
+                      key={store.id}
+                      onClick={() => navigate(`/store/${store.id}`)}
+                      className={`group cursor-pointer rounded-2xl border bg-white p-4 transition-all hover:-translate-y-0.5 hover:shadow-md ${
+                        isFav ? 'border-red-200/80' : 'border-stone-200'
+                      }`}
+                    >
+                      <div className="mb-3 flex items-start justify-between gap-2">
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[#eef4f1] text-sm font-bold text-[#1e4d3a] ring-1 ring-stone-200">
+                          {store.imageUrl ? (
+                            <img
+                              src={storeImageUrl(store.imageUrl)}
+                              alt=""
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            store.name?.slice(0, 2).toUpperCase()
+                          )}
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                              isOpen
+                                ? 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200'
+                                : 'bg-stone-100 text-stone-600 ring-1 ring-stone-200'
+                            }`}
+                          >
+                            {isOpen ? 'Open' : 'Closed'}
+                          </span>
+                          {store.estimatedDeliveryMinutes && (
+                            <span className="text-[10px] text-slate-500">
+                              ~{store.estimatedDeliveryMinutes} min
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <div style={styles.storeMetaRow}>
-                        {store.estimatedDeliveryMinutes && (
-                          <span style={styles.storeTag}>🕐 {store.estimatedDeliveryMinutes}min</span>
-                        )}
-                        {favorites.includes(store.id) && (
-                          <span style={styles.favTag}>❤️ Saved</span>
-                        )}
+                      <h3 className="font-semibold text-slate-900 group-hover:text-[#1e4d3a]">{store.name}</h3>
+                      <p className="mt-0.5 line-clamp-1 text-xs text-slate-500">{store.address}</p>
+                      {rating?.total > 0 && (
+                        <p className="mt-1 text-xs font-medium text-amber-700">
+                          {rating.average} · {rating.total} review{rating.total !== 1 ? 's' : ''}
+                        </p>
+                      )}
+                      {store.description && (
+                        <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-slate-500">
+                          {store.description}
+                        </p>
+                      )}
+                      <div className="mt-4 flex gap-2" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/store/${store.id}`)}
+                          className="flex-1 rounded-lg bg-[#1e4d3a] py-2 text-sm font-semibold text-white hover:bg-[#163d2f]"
+                        >
+                          Shop now
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/chat/${store.ownerId}`)}
+                          className="flex h-9 w-9 items-center justify-center rounded-lg border border-stone-200 text-slate-600 hover:bg-stone-50"
+                          aria-label="Chat"
+                        >
+                          <Icon className="h-4 w-4">
+                            <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8z" />
+                          </Icon>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => toggleFavorite(store.id, e)}
+                          className={`flex h-9 w-9 items-center justify-center rounded-lg border ${
+                            isFav
+                              ? 'border-red-200 bg-red-50 text-red-500'
+                              : 'border-stone-200 text-slate-400 hover:bg-stone-50'
+                          }`}
+                          aria-label={isFav ? 'Remove favorite' : 'Add favorite'}
+                        >
+                          <Icon className={`h-4 w-4 ${isFav ? 'fill-current' : ''}`}>
+                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                          </Icon>
+                        </button>
                       </div>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px' }}>
-                      <h3 style={{ ...styles.storeTitle, margin: 0 }}>{store.name}</h3>
-                      <span style={{
-                        fontSize: '10px', fontWeight: '600', padding: '2px 8px', borderRadius: '20px',
-                        backgroundColor: store.status === 'ACTIVE' ? '#05966920' : '#ef444420',
-                        color: store.status === 'ACTIVE' ? '#059669' : '#ef4444',
-                      }}>
-                        {store.status === 'ACTIVE' ? '🟢 Open' : '🔴 Closed'}
-                      </span>
-                    </div>
-                    <p style={styles.storeAddress}>📍 {store.address}</p>
-                    {storeRatings[store.id]?.total > 0 && (
-                      <p style={{ fontSize: '11px', color: '#f59e0b', margin: '0 0 6px' }}>
-                        ⭐ {storeRatings[store.id].average} · {storeRatings[store.id].total} review{storeRatings[store.id].total !== 1 ? 's' : ''}
-                      </p>
-                    )}
-                    {store.description && <p style={styles.storeDesc}>{store.description}</p>}
-
-                    <div style={styles.storeActions}>
-                      <button style={styles.shopBtn} onClick={(e) => { e.stopPropagation(); navigate(`/store/${store.id}`); }}>
-                        Shop Now →
-                      </button>
-                      <button style={styles.storeIconBtn} onClick={(e) => { e.stopPropagation(); navigate(`/chat/${store.ownerId}`); }} title="Chat">
-                        💬
-                      </button>
-                      <button
-                        style={{ ...styles.storeIconBtn, color: favorites.includes(store.id) ? '#ef4444' : '#52525b', borderColor: favorites.includes(store.id) ? '#ef444450' : '#27272a' }}
-                        onClick={(e) => toggleFavorite(store.id, e)}
-                        title={favorites.includes(store.id) ? 'Remove from favorites' : 'Add to favorites'}
-                      >
-                        {favorites.includes(store.id) ? '❤️' : '🤍'}
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                    </article>
+                  );
+                })}
               </div>
             )}
-          </div>
+          </>
         )}
 
-        {/* FEEDBACK TAB */}
         {activeTab === 'feedback' && (
-          <div style={styles.tabContent}>
-            <Feedback embedded={true} />
+          <div className="rounded-2xl border border-stone-200 bg-white p-2 sm:p-4">
+            <Feedback embedded />
           </div>
         )}
 
-        {/* CHATS TAB */}
         {activeTab === 'chats' && (
-          <div style={styles.tabContent}>
-            <div style={styles.pageHeader}>
-              <div>
-                <h1 style={styles.pageTitle}>💬 Messages</h1>
-                <p style={styles.pageSubtitle}>{conversations.length} conversation{conversations.length !== 1 ? 's' : ''}</p>
-              </div>
+          <>
+            <div className="mb-6">
+              <h1 className="font-['Libre_Baskerville'] text-2xl font-bold text-slate-900">Messages</h1>
+              <p className="mt-1 text-sm text-slate-500">
+                {conversations.length} conversation{conversations.length !== 1 ? 's' : ''}
+              </p>
             </div>
-            {conversations.length === 0 ? (
-              <div style={styles.centerState}>
-                <div style={{ fontSize: '48px', marginBottom: '12px' }}>💬</div>
-                <p style={styles.stateTitle}>No conversations yet</p>
-                <p style={styles.stateText}>Chat with a store from the Stores tab!</p>
+            {filteredConversations.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-stone-300 bg-white py-16 text-center">
+                <p className="font-semibold text-slate-800">
+                  {searchQuery ? 'No messages match your search' : 'No conversations yet'}
+                </p>
+                <p className="mt-1 text-sm text-slate-500">
+                  {searchQuery ? 'Try a different keyword.' : 'Open a store and start a chat from the Stores tab.'}
+                </p>
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {conversations.map(convo => (
-                  <div key={convo.ownerId}
-                    onClick={() => navigate(`/chat/${convo.ownerId}`)}
-                    style={{ backgroundColor: '#111114', border: `1px solid ${convo.unread > 0 ? '#3b82f640' : '#1f1f24'}`, borderRadius: '14px', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px', cursor: 'pointer', transition: 'border-color 0.2s' }}>
-                    <div style={{ width: '44px', height: '44px', borderRadius: '12px', backgroundColor: '#1c1c22', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', flexShrink: 0 }}>🏪</div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                        <p style={{ fontSize: '14px', fontWeight: '600', color: '#e4e4e7', margin: 0 }}>{convo.storeName}</p>
-                        <span style={{ fontSize: '11px', color: '#52525b' }}>{new Date(convo.lastMsg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                      </div>
-                      <p style={{ fontSize: '13px', color: '#71717a', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{convo.lastMsg.message}</p>
-                    </div>
-                    {convo.unread > 0 && (
-                      <span style={{ backgroundColor: '#3b82f6', color: '#fff', fontSize: '11px', fontWeight: '700', padding: '2px 7px', borderRadius: '999px', flexShrink: 0 }}>
-                        {convo.unread > 9 ? '9+' : convo.unread}
+              <ul className="space-y-2">
+                {filteredConversations.map((convo) => (
+                  <li key={convo.ownerId}>
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/chat/${convo.ownerId}`)}
+                      className={`flex w-full items-center gap-3 rounded-xl border bg-white p-4 text-left transition-colors hover:shadow-sm ${
+                        convo.unread > 0 ? 'border-[#1e4d3a]/30' : 'border-stone-200'
+                      }`}
+                    >
+                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-[#eef4f1] text-sm font-bold text-[#1e4d3a]">
+                        {convo.storeName?.slice(0, 2).toUpperCase()}
                       </span>
-                    )}
-                  </div>
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-center justify-between gap-2">
+                          <span className="font-semibold text-slate-900">{convo.storeName}</span>
+                          <span className="shrink-0 text-xs text-slate-400">
+                            {new Date(convo.lastMsg.createdAt).toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </span>
+                        </span>
+                        <span className="mt-0.5 block truncate text-sm text-slate-500">{convo.lastMsg.message}</span>
+                      </span>
+                      {convo.unread > 0 && (
+                        <span className="flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-[#1e4d3a] px-1.5 text-[10px] font-bold text-white">
+                          {convo.unread > 9 ? '9+' : convo.unread}
+                        </span>
+                      )}
+                    </button>
+                  </li>
                 ))}
-              </div>
+              </ul>
             )}
-          </div>
+          </>
         )}
 
-        {/* ORDERS TAB */}
         {activeTab === 'orders' && (
-          <div style={styles.tabContent}>
-            <div style={styles.pageHeader}>
+          <>
+            <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <h1 style={styles.pageTitle}>My Orders</h1>
-                <p style={styles.pageSubtitle}>{orders.length} total orders</p>
+                <h1 className="font-['Libre_Baskerville'] text-2xl font-bold text-slate-900">My orders</h1>
+                <p className="mt-1 text-sm text-slate-500">{orders.length} total</p>
               </div>
-              <div style={styles.headerActions}>
-                {lastRefreshed && <span style={styles.refreshTime}>Updated {lastRefreshed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
-                <button style={styles.refreshBtn} onClick={() => fetchData(true)}>🔄 Refresh</button>
+              <div className="flex items-center gap-2">
+                {lastRefreshed && (
+                  <span className="text-xs text-slate-400">
+                    Updated {lastRefreshed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => fetchData(true)}
+                  className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-stone-50"
+                >
+                  Refresh
+                </button>
               </div>
             </div>
 
             {loading ? (
-              <div style={styles.centerState}>
-                <div style={styles.spinner} />
-                <p style={styles.stateText}>Loading your orders...</p>
+              <div className="flex flex-col items-center py-24">
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-stone-200 border-t-[#1e4d3a]" />
+                <p className="mt-4 text-sm text-slate-500">Loading orders…</p>
               </div>
             ) : orders.length === 0 ? (
-              <div style={styles.centerState}>
-                <div style={{ fontSize: '48px', marginBottom: '12px' }}>◫</div>
-                <p style={styles.stateTitle}>No orders yet</p>
-                <p style={styles.stateText}>Browse stores and place your first order!</p>
-                <button style={styles.shopNowCta} onClick={() => setActiveTab('stores')}>Browse Stores →</button>
+              <div className="rounded-2xl border border-dashed border-stone-300 bg-white py-16 text-center">
+                <p className="font-semibold text-slate-800">No orders yet</p>
+                <p className="mt-1 text-sm text-slate-500">Browse stores and place your first order.</p>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('stores')}
+                  className="mt-4 rounded-lg bg-[#1e4d3a] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#163d2f]"
+                >
+                  Browse stores
+                </button>
+              </div>
+            ) : filteredActiveOrders.length === 0 && filteredPastOrders.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-stone-300 bg-white py-16 text-center">
+                <p className="font-semibold text-slate-800">No orders match your search</p>
+                <p className="mt-1 text-sm text-slate-500">Try order ID, store name, or status.</p>
               </div>
             ) : (
-              <>
-                {activeOrders.length > 0 && (
-                  <section style={styles.orderSection}>
-                    <div style={styles.orderSectionHeader}>
-                      <span style={styles.orderSectionDot} />
-                      <span style={styles.orderSectionTitle}>Active Orders</span>
-                      <span style={styles.orderSectionCount}>{activeOrders.length}</span>
-                    </div>
-                    <div style={styles.ordersList}>
-                      {activeOrders.map(order => (
-                        <OrderCard key={order.id} order={order}
-                          expanded={expandedOrder === order.id}
-                          onToggle={() => setExpandedOrder(expandedOrder === order.id ? null : order.id)}
-                          onReorder={handleReorder}
-                          onCancel={handleCancel}
-                          reordering={reordering === order.id}
-                          reorderSuccess={reorderSuccess === order.id}
-                          getStatusColor={getStatusColor} getStatusEmoji={getStatusEmoji}
-                          getStepIndex={getStepIndex} STATUS_STEPS={STATUS_STEPS} navigate={navigate} onReceipt={setReceiptOrder} />
+              <div className="space-y-8">
+                {filteredActiveOrders.length > 0 && (
+                  <section>
+                    <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-slate-500">
+                      <span className="h-2 w-2 animate-pulse rounded-full bg-amber-500" />
+                      Active · {filteredActiveOrders.length}
+                    </h2>
+                    <ul className="space-y-3">
+                      {filteredActiveOrders.map((order) => (
+                        <li key={order.id}>
+                          <OrderCard
+                            order={order}
+                            expanded={expandedOrder === order.id}
+                            onToggle={() =>
+                              setExpandedOrder(expandedOrder === order.id ? null : order.id)
+                            }
+                            onReorder={handleReorder}
+                            onCancel={handleCancel}
+                            reordering={reordering === order.id}
+                            reorderSuccess={reorderSuccess === order.id}
+                            getStepIndex={getStepIndex}
+                            navigate={navigate}
+                            onReceipt={setReceiptOrder}
+                          />
+                        </li>
                       ))}
-                    </div>
+                    </ul>
                   </section>
                 )}
-                {pastOrders.length > 0 && (
-                  <section style={styles.orderSection}>
-                    <div style={styles.orderSectionHeader}>
-                      <span style={{ ...styles.orderSectionDot, backgroundColor: '#52525b' }} />
-                      <span style={styles.orderSectionTitle}>Past Orders</span>
-                      <span style={styles.orderSectionCount}>{pastOrders.length}</span>
-                    </div>
-                    <div style={styles.ordersList}>
-                      {pastOrders.map(order => (
-                        <OrderCard key={order.id} order={order}
-                          expanded={expandedOrder === order.id}
-                          onToggle={() => setExpandedOrder(expandedOrder === order.id ? null : order.id)}
-                          onReorder={handleReorder}
-                          onCancel={handleCancel}
-                          reordering={reordering === order.id}
-                          reorderSuccess={reorderSuccess === order.id}
-                          getStatusColor={getStatusColor} getStatusEmoji={getStatusEmoji}
-                          getStepIndex={getStepIndex} STATUS_STEPS={STATUS_STEPS} navigate={navigate} onReceipt={setReceiptOrder} />
+                {filteredPastOrders.length > 0 && (
+                  <section>
+                    <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
+                      Past · {filteredPastOrders.length}
+                    </h2>
+                    <ul className="space-y-3">
+                      {filteredPastOrders.map((order) => (
+                        <li key={order.id}>
+                          <OrderCard
+                            order={order}
+                            expanded={expandedOrder === order.id}
+                            onToggle={() =>
+                              setExpandedOrder(expandedOrder === order.id ? null : order.id)
+                            }
+                            onReorder={handleReorder}
+                            onCancel={handleCancel}
+                            reordering={reordering === order.id}
+                            reorderSuccess={reorderSuccess === order.id}
+                            getStepIndex={getStepIndex}
+                            navigate={navigate}
+                            onReceipt={setReceiptOrder}
+                          />
+                        </li>
                       ))}
-                    </div>
+                    </ul>
                   </section>
                 )}
-              </>
+              </div>
             )}
-          </div>
+          </>
         )}
+        </div>
       </main>
 
       {receiptOrder && <OrderReceiptModal order={receiptOrder} onClose={() => setReceiptOrder(null)} />}
 
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
-        @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
-        @keyframes trackPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(249,115,22,0.35); } 50% { box-shadow: 0 0 0 6px rgba(249,115,22,0); } }
-        @keyframes slideDown { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
-        .store-card-hover:hover { border-color: #f9731640 !important; transform: translateY(-2px); }
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(6px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
       `}</style>
     </div>
   );
-};
-
-// ── Order Card ────────────────────────────────────────────────────────────────
-const OrderCard = ({ order, expanded, onToggle, onReorder, onCancel, reordering, reorderSuccess, getStatusColor, getStatusEmoji, getStepIndex, STATUS_STEPS, navigate, onReceipt }) => {
-  const isCancelled = order.status === 'CANCELLED';
-  const isDelivered = order.status === 'DELIVERED';
-  const currentStep = getStepIndex(order.status);
-
-  return (
-    <div style={{ ...card.wrap, borderColor: isCancelled ? '#ef444428' : expanded ? '#f9731628' : '#1f1f24' }}>
-      <div style={card.header} onClick={onToggle}>
-        <div style={card.headerLeft}>
-          <div style={card.idRow}>
-            <span style={card.id}>Order #{order.id}</span>
-            <span style={card.date}>{new Date(order.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-          </div>
-          <span style={card.store}>🏪 {order.storeName || `Store #${order.storeId}`}</span>
-          <span style={card.amount}>₱{order.totalAmount}</span>
-        </div>
-        <div style={card.headerRight}>
-          <span style={{ ...card.pill, backgroundColor: `${getStatusColor(order.status)}15`, color: getStatusColor(order.status), borderColor: `${getStatusColor(order.status)}35`, animation: !isCancelled && !isDelivered ? 'trackPulse 2s ease infinite' : 'none' }}>
-            {getStatusEmoji(order.status)} {order.status?.replace(/_/g, ' ')}
-          </span>
-          <span style={card.hint}>{expanded ? '▲ Hide' : '▼ Track'}</span>
-        </div>
-      </div>
-
-      {expanded && (
-        <div style={card.body}>
-          {isCancelled ? (
-            <div style={card.cancelled}>❌ This order was cancelled.</div>
-          ) : (
-            <>
-              <div style={card.timeline}>
-                {STATUS_STEPS.map((step, idx) => {
-                  const done = currentStep >= idx;
-                  const active = currentStep === idx;
-                  return (
-                    <div key={step.key} style={card.step}>
-                      {idx > 0 && <div style={{ ...card.connector, backgroundColor: done ? '#f97316' : '#27272a' }} />}
-                      <div style={{ ...card.circle, backgroundColor: done ? '#f97316' : '#1a1a1f', border: `2px solid ${done ? '#f97316' : '#27272a'}`, boxShadow: active ? '0 0 0 4px rgba(249,115,22,0.2)' : 'none' }}>
-                        {done ? step.emoji : <span style={{ color: '#3f3f46', fontSize: '12px' }}>○</span>}
-                      </div>
-                      <div style={card.stepLabel}>
-                        <span style={{ fontSize: '13px', color: done ? '#e4e4e7' : '#52525b', fontWeight: active ? '600' : '400' }}>{step.label}</span>
-                        {active && <span style={{ fontSize: '11px', color: '#f97316', fontWeight: '600', marginLeft: '6px' }}>← Now</span>}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              {!isDelivered && (
-                <div style={card.eta}>
-                  <span style={{ fontSize: '15px' }}>🕐</span>
-                  <span style={{ fontSize: '13px', color: '#a1a1aa', lineHeight: '1.5' }}>
-                    {order.status === 'PENDING' && 'Waiting for store to confirm your order...'}
-                    {order.status === 'CONFIRMED' && 'Your order has been confirmed and will be prepared soon.'}
-                    {order.status === 'PREPARING' && 'The store is preparing your order right now.'}
-                    {order.status === 'OUT_FOR_DELIVERY' && "Your order is on the way — shouldn't be long!"}
-                  </span>
-                </div>
-              )}
-            </>
-          )}
-          <div style={card.actions}>
-            <button style={card.chatBtn} onClick={() => navigate(`/chat/${order.storeOwnerId || order.storeId}`)}>💬 Chat with Store</button>
-            <button style={card.chatBtn} onClick={() => onReceipt(order)}>🧾 Receipt</button>
-            {order.status === 'PENDING' && (
-              <button style={card.cancelBtn} onClick={() => onCancel(order.id)}>❌ Cancel Order</button>
-            )}
-            {isDelivered && (
-              <>
-                <button style={card.rateBtn} onClick={() => navigate('/buyer/ratings')}>⭐ Rate</button>
-                <button style={card.feedbackBtn} onClick={() => navigate('/buyer/feedback')}>📝 Feedback</button>
-                <button
-                  style={{ ...card.reorderBtn, opacity: reordering ? 0.6 : 1, backgroundColor: reorderSuccess ? '#14291a' : '#1c2a1c', borderColor: reorderSuccess ? '#22c55e' : '#1a3a1a', color: reorderSuccess ? '#22c55e' : '#22c55e' }}
-                  onClick={() => !reordering && onReorder(order)} disabled={reordering}>
-                  {reordering ? '⏳ Placing...' : reorderSuccess ? '✅ Reordered!' : '🔁 Reorder'}
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-const card = {
-  wrap: { backgroundColor: '#111114', border: '1px solid #1f1f24', borderRadius: '14px', overflow: 'hidden', transition: 'border-color 0.2s', animation: 'fadeUp 0.4s ease both' },
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 20px', cursor: 'pointer', flexWrap: 'wrap', gap: '12px' },
-  headerLeft: { display: 'flex', flexDirection: 'column', gap: '4px' },
-  idRow: { display: 'flex', alignItems: 'center', gap: '10px' },
-  id: { fontSize: '14px', fontWeight: '600', color: '#e4e4e7', fontFamily: "'DM Mono', monospace" },
-  date: { fontSize: '11px', color: '#52525b' },
-  store: { fontSize: '12px', color: '#71717a' },
-  amount: { fontSize: '17px', fontWeight: '700', color: '#f97316' },
-  headerRight: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' },
-  pill: { display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '5px 12px', borderRadius: '20px', border: '1px solid', fontSize: '11px', fontWeight: '600', letterSpacing: '0.3px' },
-  hint: { fontSize: '11px', color: '#3f3f46' },
-  body: { borderTop: '1px solid #1f1f24', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' },
-  cancelled: { backgroundColor: '#ef444412', border: '1px solid #ef444428', borderRadius: '10px', padding: '12px 16px', color: '#ef4444', fontSize: '13px', textAlign: 'center' },
-  timeline: { display: 'flex', flexDirection: 'column', paddingLeft: '8px' },
-  step: { display: 'flex', alignItems: 'flex-start', gap: '14px', position: 'relative' },
-  connector: { position: 'absolute', left: '17px', top: '-16px', width: '2px', height: '16px' },
-  circle: { width: '34px', height: '34px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '14px', transition: 'all 0.3s', marginBottom: '12px' },
-  stepLabel: { display: 'flex', alignItems: 'center', paddingTop: '7px' },
-  eta: { backgroundColor: '#1a1a1f', border: '1px solid #27272a', borderRadius: '10px', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '12px' },
-  actions: { display: 'flex', gap: '8px', flexWrap: 'wrap' },
-  chatBtn: { padding: '8px 14px', backgroundColor: '#131b2e', color: '#60a5fa', border: '1px solid #1e3056', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: '500', fontFamily: "'DM Sans', sans-serif" },
-  rateBtn: { padding: '8px 14px', backgroundColor: '#1c1a10', color: '#f59e0b', border: '1px solid #2d2a18', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: '500', fontFamily: "'DM Sans', sans-serif" },
-  feedbackBtn: { padding: '8px 14px', backgroundColor: '#1a1422', color: '#a78bfa', border: '1px solid #2a1e40', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: '500', fontFamily: "'DM Sans', sans-serif" },
-  reorderBtn: { padding: '8px 14px', border: '1px solid', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: '600', fontFamily: "'DM Sans', sans-serif", transition: 'all 0.25s' },
-  cancelBtn: { padding: '8px 14px', backgroundColor: '#2a1010', color: '#ef4444', border: '1px solid #ef444440', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: '500', fontFamily: "'DM Sans', sans-serif" },
-};
-
-const styles = {
-  root: { minHeight: '100vh', backgroundColor: '#090909', fontFamily: "'DM Sans', sans-serif", color: '#e4e4e7' },
-  nav: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 28px', height: '58px', backgroundColor: '#0e0e11', borderBottom: '1px solid #1a1a1f', position: 'sticky', top: 0, zIndex: 200, backdropFilter: 'blur(12px)' },
-  navLeft: { display: 'flex', alignItems: 'center', gap: '8px' },
-  navLogo: { fontSize: '18px', color: '#f97316' },
-  navBrand: { fontSize: '16px', fontWeight: '700', color: '#fff', letterSpacing: '-0.4px' },
-  navTabs: { display: 'flex', gap: '2px', backgroundColor: '#111114', borderRadius: '10px', padding: '3px' },
-  navTab: { padding: '6px 16px', borderRadius: '8px', border: 'none', backgroundColor: 'transparent', color: '#71717a', fontSize: '13px', fontWeight: '500', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.15s' },
-  navTabActive: { backgroundColor: '#1c1c22', color: '#f97316' },
-  badge: { backgroundColor: '#f97316', color: '#fff', fontSize: '10px', fontWeight: '700', padding: '1px 6px', borderRadius: '999px', minWidth: '16px', textAlign: 'center' },
-  navRight: { display: 'flex', alignItems: 'center', gap: '6px' },
-  iconBtn: { width: '34px', height: '34px', borderRadius: '9px', backgroundColor: '#111114', border: '1px solid #27272a', cursor: 'pointer', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', transition: 'all 0.15s' },
-  iconBadge: { position: 'absolute', top: '-5px', right: '-5px', backgroundColor: '#ef4444', color: '#fff', fontSize: '9px', fontWeight: '700', padding: '1px 4px', borderRadius: '999px', minWidth: '14px', textAlign: 'center', lineHeight: '14px' },
-  navDivider: { width: '1px', height: '20px', backgroundColor: '#27272a', margin: '0 2px' },
-  profileChip: { display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 10px 4px 4px', backgroundColor: '#111114', border: '1px solid #27272a', borderRadius: '30px', cursor: 'pointer', transition: 'border-color 0.15s' },
-  profileAvatar: { width: '26px', height: '26px', borderRadius: '50%', backgroundColor: '#f97316', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '700', color: '#fff' },
-  profileName: { fontSize: '12px', color: '#a1a1aa', fontWeight: '500' },
-  logoutBtn: { padding: '6px 13px', backgroundColor: 'transparent', color: '#71717a', border: '1px solid #27272a', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontFamily: "'DM Sans', sans-serif", transition: 'all 0.15s' },
-  notifPanel: { position: 'absolute', top: '44px', right: 0, width: '348px', backgroundColor: '#0e0e11', border: '1px solid #1f1f24', borderRadius: '16px', boxShadow: '0 24px 64px rgba(0,0,0,0.7)', zIndex: 300, overflow: 'hidden', animation: 'slideDown 0.18s ease' },
-  notifHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px 12px', borderBottom: '1px solid #1a1a1f' },
-  notifHeaderTitle: { fontSize: '13px', fontWeight: '600', color: '#e4e4e7' },
-  markAllBtn: { fontSize: '11px', color: '#f97316', backgroundColor: 'transparent', border: 'none', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", fontWeight: '500' },
-  notifEmpty: { display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '36px 16px' },
-  notifList: { maxHeight: '380px', overflowY: 'auto' },
-  notifItem: { display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '11px 14px', cursor: 'pointer', borderBottom: '1px solid #1a1a1f', transition: 'background 0.12s' },
-  notifIconWrap: { flexShrink: 0, width: '30px', height: '30px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  notifContent: { flex: 1, minWidth: 0 },
-  notifTitle: { fontSize: '12px', fontWeight: '600', color: '#e4e4e7', margin: '0 0 2px' },
-  notifMsg: { fontSize: '11px', color: '#71717a', margin: '0 0 4px', lineHeight: '1.4' },
-  notifTime: { fontSize: '10px', color: '#3f3f46', margin: 0 },
-  notifDot: { width: '7px', height: '7px', borderRadius: '50%', flexShrink: 0, marginTop: '4px' },
-  main: { maxWidth: '1260px', margin: '0 auto', padding: '0 28px 60px' },
-  tabContent: { paddingTop: '32px' },
-  pageHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '28px', flexWrap: 'wrap', gap: '16px' },
-  pageTitle: { fontSize: '22px', fontWeight: '700', color: '#fff', margin: '0 0 4px', letterSpacing: '-0.4px' },
-  pageSubtitle: { fontSize: '13px', color: '#52525b', margin: 0 },
-  headerActions: { display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' },
-  clearFavBtn: { padding: '7px 14px', backgroundColor: 'transparent', color: '#ef4444', border: '1px solid #ef444440', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontFamily: "'DM Sans', sans-serif" },
-  searchBar: { display: 'flex', alignItems: 'center', backgroundColor: '#111114', border: '1px solid #1f1f24', borderRadius: '10px', padding: '0 12px', gap: '8px', minWidth: '240px' },
-  searchIcon: { fontSize: '16px', color: '#3f3f46' },
-  searchInput: { backgroundColor: 'transparent', border: 'none', outline: 'none', color: '#e4e4e7', fontSize: '13px', padding: '9px 0', fontFamily: "'DM Sans', sans-serif", flex: 1 },
-  clearSearch: { background: 'none', border: 'none', color: '#52525b', cursor: 'pointer', fontSize: '13px', padding: 0 },
-  refreshTime: { fontSize: '11px', color: '#3f3f46' },
-  refreshBtn: { padding: '7px 14px', backgroundColor: '#111114', color: '#a1a1aa', border: '1px solid #1f1f24', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontFamily: "'DM Sans', sans-serif" },
-  storeGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(272px, 1fr))', gap: '18px' },
-  storeCard: { backgroundColor: '#111114', border: '1px solid #1f1f24', borderRadius: '16px', padding: '20px', cursor: 'pointer', transition: 'border-color 0.2s, transform 0.2s', animation: 'fadeUp 0.4s ease both' },
-  storeCardTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' },
-  storeAvatar: { width: '44px', height: '44px', borderRadius: '12px', backgroundColor: '#1c1c22', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px' },
-  storeMetaRow: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' },
-  storeTag: { fontSize: '11px', color: '#52525b', backgroundColor: '#1a1a1f', padding: '3px 8px', borderRadius: '6px' },
-  favTag: { fontSize: '10px', color: '#ef4444', backgroundColor: '#ef444412', padding: '2px 8px', borderRadius: '6px', fontWeight: '600' },
-  storeTitle: { fontSize: '15px', fontWeight: '600', color: '#fff', margin: '0 0 5px', letterSpacing: '-0.2px' },
-  storeAddress: { fontSize: '12px', color: '#71717a', margin: '0 0 6px' },
-  storeDesc: { fontSize: '12px', color: '#3f3f46', margin: '0 0 16px', lineHeight: '1.5' },
-  storeActions: { display: 'flex', gap: '8px' },
-  shopBtn: { flex: 1, padding: '9px', backgroundColor: '#f97316', color: '#fff', border: 'none', borderRadius: '9px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', fontFamily: "'DM Sans', sans-serif" },
-  storeIconBtn: { width: '36px', height: '36px', backgroundColor: '#1c1c22', border: '1px solid #27272a', borderRadius: '9px', cursor: 'pointer', fontSize: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.15s' },
-  orderSection: { marginBottom: '28px' },
-  orderSectionHeader: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' },
-  orderSectionDot: { width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#ef4444', animation: 'pulse 2s infinite', display: 'inline-block' },
-  orderSectionTitle: { fontSize: '14px', fontWeight: '600', color: '#a1a1aa' },
-  orderSectionCount: { backgroundColor: '#1f1f24', color: '#52525b', fontSize: '11px', padding: '2px 8px', borderRadius: '20px' },
-  ordersList: { display: 'flex', flexDirection: 'column', gap: '10px' },
-  centerState: { display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '100px 0', textAlign: 'center' },
-  spinner: { width: '28px', height: '28px', border: '2px solid #1f1f24', borderTop: '2px solid #f97316', borderRadius: '50%', animation: 'spin 0.8s linear infinite', marginBottom: '16px' },
-  stateTitle: { fontSize: '15px', fontWeight: '600', color: '#52525b', margin: '0 0 6px' },
-  stateText: { fontSize: '13px', color: '#3f3f46', margin: '0 0 20px' },
-  shopNowCta: { padding: '10px 24px', backgroundColor: '#f97316', color: '#fff', border: 'none', borderRadius: '9px', cursor: 'pointer', fontSize: '14px', fontWeight: '600', fontFamily: "'DM Sans', sans-serif" },
 };
 
 export default BuyerDashboard;

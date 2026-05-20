@@ -171,7 +171,7 @@ const MiniBarChart = ({ data, color }) => {
               transition: 'height 0.3s ease',
             }}
           />
-          <span style={{ fontSize: '9px', color: '#52525b', marginTop: '4px' }}>{item.label}</span>
+          <span style={{ fontSize: '9px', color: '#64748b', marginTop: '4px' }}>{item.label}</span>
         </div>
       ))}
     </div>
@@ -206,13 +206,13 @@ const DonutChart = ({ data, size = 120 }) => {
           ].join(' ');
           return <path key={i} d={pathData} fill={slice.color} />;
         })}
-        <circle cx="0" cy="0" r="0.6" fill="#0c0c0e" />
+        <circle cx="0" cy="0" r="0.6" fill="#f7f5f1" />
       </svg>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
         {data.filter(d => d.value > 0).map((item, i) => (
           <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <div style={{ width: '10px', height: '10px', borderRadius: '2px', backgroundColor: item.color }} />
-            <span style={{ fontSize: '11px', color: '#a1a1aa' }}>{item.label}: {item.value}</span>
+            <span style={{ fontSize: '11px', color: '#64748b' }}>{item.label}: {item.value}</span>
           </div>
         ))}
       </div>
@@ -243,12 +243,12 @@ const ReplyBox = ({ ratingId, onReplied }) => {
         value={text}
         onChange={e => setText(e.target.value)}
         placeholder="Write a reply..."
-        style={{ flex: 1, padding: '8px 12px', backgroundColor: '#1a1a1f', border: '1px solid #27272a', borderRadius: '8px', color: '#e4e4e7', fontSize: '13px', outline: 'none' }}
+        style={{ flex: 1, padding: '8px 12px', backgroundColor: '#fff', border: '1px solid #e7e5e4', borderRadius: '8px', color: '#1e293b', fontSize: '13px', outline: 'none' }}
       />
       <button
         onClick={handleReply}
         disabled={saving || !text.trim()}
-        style={{ padding: '8px 14px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: '600', opacity: saving ? 0.6 : 1 }}>
+        style={{ padding: '8px 14px', backgroundColor: '#1e4d3a', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: '600', opacity: saving ? 0.6 : 1 }}>
         {saving ? '...' : 'Reply'}
       </button>
     </div>
@@ -276,8 +276,8 @@ const ReplyBox = ({ ratingId, onReplied }) => {
         : <div style={convAvatar}><UserIcon /></div>
       }
       <div style={{ flex: 1 }}>
-        <p style={{ color: '#e4e4e7', fontWeight: '600', fontSize: '14px', margin: 0 }}>{displayName}</p>
-        <p style={{ color: '#71717a', fontSize: '12px', margin: '3px 0 0' }}>{msg.message}</p>
+        <p style={{ color: '#0f172a', fontWeight: '600', fontSize: '14px', margin: 0 }}>{displayName}</p>
+        <p style={{ color: '#64748b', fontSize: '12px', margin: '3px 0 0' }}>{msg.message}</p>
       </div>
       <button style={actionBtn} onClick={onOpenChat}>Open Chat</button>
     </div>
@@ -307,6 +307,8 @@ const ReplyBox = ({ ratingId, onReplied }) => {
   const [editImagePreview, setEditImagePreview] = useState(null);
   const [orderStatusFilter, setOrderStatusFilter] = useState('ALL');
   const [orderSearch, setOrderSearch] = useState('');
+  const [productSearch, setProductSearch] = useState('');
+  const [messageSearch, setMessageSearch] = useState('');
   const [profileForm, setProfileForm] = useState(null);
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileSuccess, setProfileSuccess] = useState(false);
@@ -544,7 +546,7 @@ const ReplyBox = ({ ratingId, onReplied }) => {
   }[status] || '#888');
 
   const renderStars = (rating) => [1,2,3,4,5].map(star => (
-    <span key={star} style={{ fontSize: '16px', color: star <= rating ? '#f59e0b' : '#333' }}>&#9733;</span>
+    <span key={star} style={{ fontSize: '16px', color: star <= rating ? '#d97706' : '#cbd5e1' }}>&#9733;</span>
   ));
 
   const getUniqueConversations = () => {
@@ -572,10 +574,43 @@ const ReplyBox = ({ ratingId, onReplied }) => {
     return matchesStatus && matchesSearch;
   });
 
+  const filteredProducts = products.filter((p) => {
+    if (!productSearch.trim()) return true;
+    const q = productSearch.toLowerCase();
+    return (
+      p.name?.toLowerCase().includes(q) ||
+      p.category?.toLowerCase().includes(q) ||
+      p.description?.toLowerCase().includes(q)
+    );
+  });
+
+  const filteredConversations = getUniqueConversations().filter((msg) => {
+    if (!messageSearch.trim()) return true;
+    const q = messageSearch.toLowerCase();
+    const otherId = msg.senderId === user.id ? msg.receiverId : msg.senderId;
+    return String(otherId).includes(q) || msg.message?.toLowerCase().includes(q) || msg.senderUsername?.toLowerCase().includes(q);
+  });
+
+  const topbarSearchValue =
+    activeTab === 'orders' ? orderSearch : activeTab === 'products' ? productSearch : activeTab === 'messages' ? messageSearch : '';
+  const setTopbarSearch = (value) => {
+    if (activeTab === 'orders') setOrderSearch(value);
+    else if (activeTab === 'products') setProductSearch(value);
+    else if (activeTab === 'messages') setMessageSearch(value);
+  };
+  const topbarSearchPlaceholder =
+    activeTab === 'orders'
+      ? 'Search orders…'
+      : activeTab === 'products'
+        ? 'Search products…'
+        : activeTab === 'messages'
+          ? 'Search messages…'
+          : 'Search…';
+
   // Chart data
   const orderStatusData = [
     { label: 'Pending', value: pendingOrders, color: '#f59e0b' },
-    { label: 'Confirmed', value: orders.filter(o => o.status === 'CONFIRMED').length, color: '#3b82f6' },
+    { label: 'Confirmed', value: orders.filter(o => o.status === 'CONFIRMED').length, color: '#1e4d3a' },
     { label: 'Preparing', value: orders.filter(o => o.status === 'PREPARING').length, color: '#8b5cf6' },
     { label: 'Delivery', value: orders.filter(o => o.status === 'OUT_FOR_DELIVERY').length, color: '#06b6d4' },
     { label: 'Delivered', value: deliveredOrders, color: '#10b981' },
@@ -634,13 +669,13 @@ const ReplyBox = ({ ratingId, onReplied }) => {
       )}
 
       {/* Sidebar */}
-      <aside style={{ ...styles.sidebar, ...(sidebarOpen ? styles.sidebarOpen : {}) }}>
+      <aside className="nearbuy-owner-sidebar" style={{ ...styles.sidebar, ...(sidebarOpen ? styles.sidebarOpen : {}) }}>
         <div style={styles.sidebarHeader}>
           <div style={styles.sidebarLogo}>
             <div style={styles.logoBox}>N</div>
             <span style={styles.logoText}>NearBuy</span>
           </div>
-          <button style={styles.closeSidebarBtn} onClick={() => setSidebarOpen(false)}>
+          <button className="nearbuy-owner-close-sidebar" style={{ ...styles.closeSidebarBtn, display: 'none' }} onClick={() => setSidebarOpen(false)}>
             <CloseIcon />
           </button>
         </div>
@@ -689,7 +724,7 @@ const ReplyBox = ({ ratingId, onReplied }) => {
         <div style={styles.sidebarBottom}>
           <div style={styles.ownerProfile}>
             {ownerPhoto ? (
-              <img src={ownerPhoto} alt="profile" style={{ width: '36px', height: '36px', borderRadius: '8px', objectFit: 'cover', flexShrink: 0, border: '2px solid #3b82f6' }} />
+              <img src={ownerPhoto} alt="profile" style={{ width: '36px', height: '36px', borderRadius: '8px', objectFit: 'cover', flexShrink: 0, border: '2px solid #1e4d3a' }} />
             ) : (
               <div style={styles.ownerAvatar}>{user.username?.[0]?.toUpperCase() || 'S'}</div>
             )}
@@ -707,11 +742,11 @@ const ReplyBox = ({ ratingId, onReplied }) => {
       </aside>
 
       {/* Main Content */}
-      <main style={styles.main}>
+      <main className="nearbuy-owner-main" style={styles.main}>
         {/* Topbar */}
         <header style={styles.topbar}>
           <div style={styles.topbarLeft}>
-            <button style={styles.hamburgerBtn} onClick={() => setSidebarOpen(true)}>
+            <button className="nearbuy-owner-hamburger" style={styles.hamburgerBtn} onClick={() => setSidebarOpen(true)}>
               <MenuIcon />
             </button>
             <div>
@@ -732,6 +767,22 @@ const ReplyBox = ({ ratingId, onReplied }) => {
             </div>
           </div>
           <div style={styles.topbarRight}>
+            {['orders', 'products', 'messages'].includes(activeTab) && (
+              <div style={styles.searchWrap}>
+                <SearchIcon />
+                <input
+                  style={styles.searchInput}
+                  placeholder={topbarSearchPlaceholder}
+                  value={topbarSearchValue}
+                  onChange={(e) => setTopbarSearch(e.target.value)}
+                />
+                {topbarSearchValue && (
+                  <button type="button" style={styles.clearSearch} onClick={() => setTopbarSearch('')}>
+                    <CloseIcon />
+                  </button>
+                )}
+              </div>
+            )}
             <div style={styles.liveIndicator}>
               <span style={styles.liveDot}></span>
               Live
@@ -746,7 +797,7 @@ const ReplyBox = ({ ratingId, onReplied }) => {
             <>
               <div style={styles.statsRow}>
                 {[
-                  { icon: <DollarIcon />, value: `P${totalRevenue.toFixed(2)}`, label: 'Total Revenue', color: '#3b82f6' },
+                  { icon: <DollarIcon />, value: `₱${totalRevenue.toFixed(2)}`, label: 'Total Revenue', color: '#1e4d3a' },
                   { icon: <ClockIcon />, value: pendingOrders, label: 'Pending Orders', color: '#f59e0b' },
                   { icon: <CheckCircleIcon />, value: deliveredOrders, label: 'Delivered', color: '#10b981' },
                   { icon: <XCircleIcon />, value: cancelledOrders, label: 'Cancelled', color: '#ef4444' },
@@ -775,7 +826,7 @@ const ReplyBox = ({ ratingId, onReplied }) => {
                       <span>Revenue (Last 7 Days)</span>
                     </h3>
                   </div>
-                  <MiniBarChart data={getLast7DaysRevenue()} color="#3b82f6" />
+                  <MiniBarChart data={getLast7DaysRevenue()} color="#1e4d3a" />
                 </div>
                 <div style={styles.chartCard}>
                   <div style={styles.chartHeader}>
@@ -822,7 +873,7 @@ const ReplyBox = ({ ratingId, onReplied }) => {
                             <p style={{ fontSize: '11px', color: '#52525b', margin: '2px 0 0' }}>{new Date(order.createdAt).toLocaleDateString()}</p>
                           </div>
                           <div style={{ textAlign: 'right' }}>
-                            <p style={{ fontSize: '13px', color: '#3b82f6', fontWeight: 'bold', margin: '0 0 4px' }}>P{order.totalAmount}</p>
+                            <p style={{ fontSize: '13px', color: '#1e4d3a', fontWeight: 'bold', margin: '0 0 4px' }}>₱{order.totalAmount}</p>
                             <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#fff', padding: '2px 8px', borderRadius: '20px', display: 'inline-block', backgroundColor: getStatusColor(order.status) }}>{order.status}</span>
                           </div>
                         </div>
@@ -867,7 +918,7 @@ const ReplyBox = ({ ratingId, onReplied }) => {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       {Object.entries(products.reduce((acc, p) => { const cat = p.category || 'Uncategorized'; acc[cat] = (acc[cat] || 0) + 1; return acc; }, {})).map(([cat, count]) => (
                         <div key={cat} style={styles.recentOrderItem}>
-                          <span style={{ fontSize: '13px', color: '#ddd' }}>{cat}</span>
+                          <span style={{ fontSize: '13px', color: '#334155' }}>{cat}</span>
                           <span style={{ fontSize: '12px', color: '#52525b' }}>{count} product{count > 1 ? 's' : ''}</span>
                         </div>
                       ))}
@@ -889,8 +940,8 @@ const ReplyBox = ({ ratingId, onReplied }) => {
               </div>
               {products.length === 0 && <div style={styles.emptyState}><div style={styles.emptyIcon}><PackageIcon /></div><p style={styles.emptyText}>No products yet.</p></div>}
               <div style={styles.productsGrid}>
-                {products.map(product => (
-                  <div key={product.id} style={{ ...styles.productCard, borderColor: product.stock <= 5 ? '#f59e0b40' : '#1f1f24' }}>
+                {filteredProducts.map(product => (
+                  <div key={product.id} style={{ ...styles.productCard, borderColor: product.stock <= 5 ? '#f59e0b40' : '#e7e5e4' }}>
                     {product.stock <= 5 && product.stock > 0 && <div style={styles.lowStockWarning}><AlertIcon /> Low Stock: {product.stock} left</div>}
                     {product.stock === 0 && <div style={{ ...styles.lowStockWarning, backgroundColor: '#ef444422', color: '#ef4444' }}><XCircleIcon /> Out of Stock</div>}
                     {product.imageUrl ? (
@@ -900,7 +951,7 @@ const ReplyBox = ({ ratingId, onReplied }) => {
                     )}
                     <h3 style={styles.productName}>{product.name}</h3>
                     <p style={styles.productCategory}>{product.category}</p>
-                    <p style={styles.productPrice}>P{product.price}</p>
+                    <p style={styles.productPrice}>₱{product.price}</p>
                     <p style={styles.productStock}>Stock: {product.stock}</p>
                     <p style={styles.productDesc}>{product.description}</p>
                     <div style={{ display: 'flex', gap: '8px' }}>
@@ -916,22 +967,15 @@ const ReplyBox = ({ ratingId, onReplied }) => {
           {/* ORDERS */}
           {activeTab === 'orders' && (
             <>
-              <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', alignItems: 'center' }}>
-                <div style={styles.searchWrap}>
-                  <SearchIcon />
-                  <input style={styles.searchInput} placeholder="Search by Order ID or Customer ID..." value={orderSearch} onChange={e => setOrderSearch(e.target.value)} />
-                  {orderSearch && <button style={styles.clearSearch} onClick={() => setOrderSearch('')}><CloseIcon /></button>}
-                </div>
-              </div>
               <div style={styles.filterRow}>
                 {STATUS_FILTERS.map(status => {
                   const count = status === 'ALL' ? orders.length : orders.filter(o => o.status === status).length;
                   return (
                     <button key={status}
-                      style={{ ...styles.filterPill, ...(orderStatusFilter === status ? { backgroundColor: status === 'ALL' ? '#3b82f6' : getStatusColor(status), color: '#fff', borderColor: status === 'ALL' ? '#3b82f6' : getStatusColor(status) } : {}) }}
+                      style={{ ...styles.filterPill, ...(orderStatusFilter === status ? { backgroundColor: status === 'ALL' ? '#1e4d3a' : getStatusColor(status), color: '#fff', borderColor: status === 'ALL' ? '#1e4d3a' : getStatusColor(status) } : {}) }}
                       onClick={() => setOrderStatusFilter(status)}>
                       {status.replace(/_/g, ' ')}
-                      <span style={{ ...styles.filterCount, backgroundColor: orderStatusFilter === status ? 'rgba(255,255,255,0.25)' : '#27272a' }}>{count}</span>
+                      <span style={{ ...styles.filterCount, backgroundColor: orderStatusFilter === status ? 'rgba(255,255,255,0.25)' : '#e7e5e4' }}>{count}</span>
                     </button>
                   );
                 })}
@@ -952,13 +996,13 @@ const ReplyBox = ({ ratingId, onReplied }) => {
                         <tr key={order.id} style={{ ...styles.tr, animationDelay: `${i * 30}ms` }}>
                           <td style={styles.td}><span style={styles.orderIdBadge}>#{order.id}</span></td>
                           <td style={styles.td}><span style={styles.tdMuted}>User #{order.buyerId}</span></td>
-                          <td style={styles.td}><span style={{ color: '#3b82f6', fontWeight: '600', fontSize: '14px' }}>P{order.totalAmount}</span></td>
+                          <td style={styles.td}><span style={{ color: '#1e4d3a', fontWeight: '600', fontSize: '14px' }}>₱{order.totalAmount}</span></td>
                           <td style={styles.td}><span style={styles.tdMuted}>{new Date(order.createdAt).toLocaleDateString()}</span></td>
                           <td style={styles.td}>
-                            <div style={{ fontSize: '12px', color: '#a1a1aa', maxWidth: '180px' }}>
-                              {order.deliveryAddress && <div>📍 {order.deliveryAddress}</div>}
-                              {order.contactNumber && <div>📞 {order.contactNumber}</div>}
-                              {order.deliveryNotes && <div style={{ color: '#f59e0b' }}>📝 {order.deliveryNotes}</div>}
+                            <div style={{ fontSize: '12px', color: '#64748b', maxWidth: '180px' }}>
+                              {order.deliveryAddress && <div>Address: {order.deliveryAddress}</div>}
+                              {order.contactNumber && <div>Contact: {order.contactNumber}</div>}
+                              {order.deliveryNotes && <div style={{ color: '#f59e0b' }}>Notes: {order.deliveryNotes}</div>}
                               {!order.deliveryAddress && !order.notes && <span style={{ color: '#3f3f46' }}>—</span>}
                             </div>
                           </td>
@@ -990,9 +1034,9 @@ const ReplyBox = ({ ratingId, onReplied }) => {
           {/* MESSAGES */}
           {activeTab === 'messages' && (
             <>
-              {messages.length === 0 && <div style={styles.emptyState}><div style={styles.emptyIcon}><MessageIcon /></div><p style={styles.emptyText}>No messages yet.</p></div>}
+              {filteredConversations.length === 0 && <div style={styles.emptyState}><div style={styles.emptyIcon}><MessageIcon /></div><p style={styles.emptyText}>{messageSearch ? 'No messages match your search.' : 'No messages yet.'}</p></div>}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {getUniqueConversations().map(msg => {
+                {filteredConversations.map(msg => {
                   const otherId = msg.senderId === user.id ? msg.receiverId : msg.senderId;
                   const otherName = msg.senderId === user.id ? `User #${msg.receiverId}` : msg.senderUsername;
                   return (
@@ -1019,7 +1063,7 @@ const ReplyBox = ({ ratingId, onReplied }) => {
                 <div style={styles.ratingsSummaryCard}>
                   <span style={{ fontSize: '36px', fontWeight: 'bold', color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '8px' }}><StarIcon /> {ratingSummary.average || 'N/A'}</span>
                   <div>
-                    <p style={{ color: '#e4e4e7', fontWeight: '600', margin: 0 }}>{ratingSummary.total} reviews</p>
+                    <p style={{ color: '#334155', fontWeight: '600', margin: 0 }}>{ratingSummary.total} reviews</p>
                     <p style={{ color: '#52525b', fontSize: '12px', margin: '2px 0 0' }}>Overall store rating</p>
                   </div>
                 </div>
@@ -1032,10 +1076,10 @@ const ReplyBox = ({ ratingId, onReplied }) => {
                       <span style={{ color: '#a1a1aa', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}><UserIcon /> User #{rating.user_id}</span>
                       <div>{renderStars(rating.rating)}</div>
                     </div>
-                   {rating.comment && <p style={{ color: '#e4e4e7', fontSize: '14px', marginBottom: '8px', fontStyle: 'italic' }}>"{rating.comment}"</p>}
+                   {rating.comment && <p style={{ color: '#334155', fontSize: '14px', marginBottom: '8px', fontStyle: 'italic' }}>"{rating.comment}"</p>}
                       {rating.reply ? (
-                        <div style={{ backgroundColor: '#1e2a3b', borderLeft: '3px solid #3b82f6', padding: '10px 14px', borderRadius: '6px', marginTop: '8px' }}>
-                          <p style={{ fontSize: '11px', color: '#3b82f6', fontWeight: '600', margin: '0 0 4px' }}>Store Reply</p>
+                        <div style={{ backgroundColor: '#eef4f1', borderLeft: '3px solid #1e4d3a', padding: '10px 14px', borderRadius: '6px', marginTop: '8px' }}>
+                          <p style={{ fontSize: '11px', color: '#1e4d3a', fontWeight: '600', margin: '0 0 4px' }}>Store Reply</p>
                           <p style={{ fontSize: '13px', color: '#a1a1aa', margin: 0 }}>{rating.reply}</p>
                         </div>
                       ) : (
@@ -1058,7 +1102,7 @@ const ReplyBox = ({ ratingId, onReplied }) => {
                   { num: orders.filter(o => o.status === 'DELIVERED').length > 0 ? Math.round((feedbacks.length / orders.filter(o => o.status === 'DELIVERED').length) * 100) + '%' : '0%', label: 'Response Rate' },
                 ].map((item, i) => (
                   <div key={i} style={styles.feedbackStatCard}>
-                    <span style={{ fontSize: '28px', fontWeight: 'bold', color: '#3b82f6' }}>{item.num}</span>
+                    <span style={{ fontSize: '28px', fontWeight: 'bold', color: '#1e4d3a' }}>{item.num}</span>
                     <span style={{ fontSize: '12px', color: '#52525b' }}>{item.label}</span>
                   </div>
                 ))}
@@ -1069,15 +1113,15 @@ const ReplyBox = ({ ratingId, onReplied }) => {
                     <div key={fb.id} style={styles.feedbackCard}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <div style={{ width: '36px', height: '36px', borderRadius: '8px', backgroundColor: '#1a1a1f', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><UserIcon /></div>
+                          <div style={{ width: '36px', height: '36px', borderRadius: '8px', backgroundColor: '#faf9f7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><UserIcon /></div>
                           <div>
-                            <p style={{ color: '#e4e4e7', fontWeight: '600', fontSize: '13px', margin: 0 }}>User #{fb.user_id}</p>
+                            <p style={{ color: '#334155', fontWeight: '600', fontSize: '13px', margin: 0 }}>User #{fb.user_id}</p>
                             <p style={{ color: '#52525b', fontSize: '11px', margin: '2px 0 0' }}>Order #{fb.order_id}</p>
                           </div>
                         </div>
                         <span style={{ color: '#3f3f46', fontSize: '11px' }}>{fb.created_at ? new Date(fb.created_at).toLocaleDateString() : 'Recently'}</span>
                       </div>
-                      <div style={{ backgroundColor: '#1a1a1f', borderRadius: '8px', padding: '14px', borderLeft: '3px solid #3b82f6' }}>
+                      <div style={{ backgroundColor: '#faf9f7', borderRadius: '8px', padding: '14px', borderLeft: '3px solid #1e4d3a' }}>
                         <p style={{ color: '#d4d4d8', fontSize: '14px', lineHeight: '1.6', margin: 0 }}>"{fb.comment}"</p>
                       </div>
                     </div>
@@ -1091,23 +1135,23 @@ const ReplyBox = ({ ratingId, onReplied }) => {
           {activeTab === 'profile' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
               <div style={styles.profileForm}>
-                <h3 style={{ fontSize: '15px', fontWeight: '600', color: '#e4e4e7', margin: '0 0 20px', display: 'flex', alignItems: 'center', gap: '8px' }}>👤 Account</h3>
+                <h3 style={{ fontSize: '15px', fontWeight: '600', color: '#334155', margin: '0 0 20px', display: 'flex', alignItems: 'center', gap: '8px' }}>Account</h3>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '24px' }}>
                   <div style={{ position: 'relative', flexShrink: 0 }}>
                     {ownerPhoto ? (
-                      <img src={ownerPhoto} alt="profile" style={{ width: '80px', height: '80px', borderRadius: '16px', objectFit: 'cover', border: '2px solid #3b82f6' }} />
+                      <img src={ownerPhoto} alt="profile" style={{ width: '80px', height: '80px', borderRadius: '16px', objectFit: 'cover', border: '2px solid #1e4d3a' }} />
                     ) : (
-                      <div style={{ width: '80px', height: '80px', borderRadius: '16px', background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', fontWeight: '700', color: '#fff' }}>
+                      <div style={{ width: '80px', height: '80px', borderRadius: '16px', background: '#1e4d3a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', fontWeight: '700', color: '#fff' }}>
                         {user.username?.[0]?.toUpperCase() || 'S'}
                       </div>
                     )}
-                    <button onClick={() => photoInputRef.current.click()} style={{ position: 'absolute', bottom: '-8px', right: '-8px', width: '28px', height: '28px', borderRadius: '50%', backgroundColor: '#1f1f24', border: '2px solid #3b82f6', cursor: 'pointer', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <button onClick={() => photoInputRef.current.click()} style={{ position: 'absolute', bottom: '-8px', right: '-8px', width: '28px', height: '28px', borderRadius: '50%', backgroundColor: '#fff', border: '2px solid #1e4d3a', cursor: 'pointer', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       {photoUploading ? '⏳' : '📷'}
                     </button>
                     <input ref={photoInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handlePhotoUpload} />
                   </div>
                   <div>
-                    <p style={{ color: '#e4e4e7', fontWeight: '600', fontSize: '15px', margin: '0 0 4px' }}>{user.username}</p>
+                    <p style={{ color: '#334155', fontWeight: '600', fontSize: '15px', margin: '0 0 4px' }}>{user.username}</p>
                     <p style={{ color: '#52525b', fontSize: '12px', margin: 0 }}>Click the camera to change your photo</p>
                   </div>
                 </div>
@@ -1124,7 +1168,7 @@ const ReplyBox = ({ ratingId, onReplied }) => {
                 <div style={{ marginTop: '20px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                     <label style={styles.profileLabel}>PASSWORD</label>
-                    <button onClick={() => setShowPassSection(!showPassSection)} style={{ background: 'none', border: '1px solid #3b82f640', color: '#3b82f6', padding: '4px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '12px' }}>
+                    <button onClick={() => setShowPassSection(!showPassSection)} style={{ background: 'none', border: '1px solid #c5d9ce', color: '#1e4d3a', padding: '4px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '12px' }}>
                       {showPassSection ? 'Cancel' : 'Change Password'}
                     </button>
                   </div>
@@ -1152,7 +1196,7 @@ const ReplyBox = ({ ratingId, onReplied }) => {
               {profileForm && (
                 <div style={styles.profileForm}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                    <h3 style={{ fontSize: '15px', fontWeight: '600', color: '#e4e4e7', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>🏪 Store Info</h3>
+                    <h3 style={{ fontSize: '15px', fontWeight: '600', color: '#334155', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>Store info</h3>
                     <button
                       onClick={async () => {
                         const newStatus = selectedStore.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
@@ -1173,7 +1217,7 @@ const ReplyBox = ({ ratingId, onReplied }) => {
                     </button>
                   </div>
                   {profileSuccess && (
-                    <div style={{ backgroundColor: '#1e293b', border: '1px solid #3b82f640', borderRadius: '10px', padding: '12px 16px', color: '#3b82f6', fontSize: '14px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ backgroundColor: '#eef4f1', border: '1px solid #c5d9ce', borderRadius: '10px', padding: '12px 16px', color: '#1e4d3a', fontSize: '14px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <CheckCircleIcon /> Store info saved successfully!
                     </div>
                   )}
@@ -1183,9 +1227,9 @@ const ReplyBox = ({ ratingId, onReplied }) => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '8px' }}>
                       {selectedStore?.imageUrl ? (
                         <img src={selectedStore.imageUrl.startsWith('/api') ? `http://localhost:8080${selectedStore.imageUrl}` : selectedStore.imageUrl}
-                          alt="store" style={{ width: '80px', height: '80px', borderRadius: '12px', objectFit: 'cover', border: '2px solid #27272a' }} />
+                          alt="store" style={{ width: '80px', height: '80px', borderRadius: '12px', objectFit: 'cover', border: '2px solid #e7e5e4' }} />
                       ) : (
-                        <div style={{ width: '80px', height: '80px', borderRadius: '12px', backgroundColor: '#1a1a1f', border: '2px dashed #27272a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>🏪</div>
+                        <div style={{ width: '80px', height: '80px', borderRadius: '12px', backgroundColor: '#faf9f7', border: '2px dashed #e7e5e4', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', color: '#94a3b8' }}>No image</div>
                       )}
                       <div>
                         <input type="file" accept="image/*" id="storeImageInput" style={{ display: 'none' }}
@@ -1202,7 +1246,7 @@ const ReplyBox = ({ ratingId, onReplied }) => {
                           }}
                         />
                         <button onClick={() => document.getElementById('storeImageInput').click()}
-                          style={{ padding: '8px 16px', backgroundColor: '#1a1a1f', border: '1px solid #27272a', borderRadius: '8px', color: '#e4e4e7', cursor: 'pointer', fontSize: '13px', fontFamily: 'inherit' }}>
+                          style={{ padding: '8px 16px', backgroundColor: '#faf9f7', border: '1px solid #e7e5e4', borderRadius: '8px', color: '#334155', cursor: 'pointer', fontSize: '13px', fontFamily: 'inherit' }}>
                           📷 Upload Image
                         </button>
                         <p style={{ fontSize: '11px', color: '#52525b', margin: '6px 0 0' }}>Shown on the buyer store card</p>
@@ -1228,7 +1272,7 @@ const ReplyBox = ({ ratingId, onReplied }) => {
                     ))}
                     <div style={{ gridColumn: '1 / -1' }}>
                       <label style={styles.profileLabel}>DESCRIPTION</label>
-                      <textarea style={{ ...styles.profileInput, height: '90px', resize: 'vertical', padding: '12px', borderRadius: '10px', border: '1px solid #27272a', backgroundColor: '#1a1a1f', color: '#e4e4e7', width: '100%', boxSizing: 'border-box', fontFamily: 'inherit', fontSize: '14px', outline: 'none' }}
+                      <textarea style={{ ...styles.profileInput, height: '90px', resize: 'vertical', padding: '12px', borderRadius: '10px', border: '1px solid #e7e5e4', backgroundColor: '#faf9f7', color: '#334155', width: '100%', boxSizing: 'border-box', fontFamily: 'inherit', fontSize: '14px', outline: 'none' }}
                         value={profileForm.description} onChange={e => setProfileForm({ ...profileForm, description: e.target.value })} />
                     </div>
                   </div>
@@ -1268,7 +1312,7 @@ const ReplyBox = ({ ratingId, onReplied }) => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <label style={{ color: '#71717a', fontSize: '11px', fontWeight: '600', letterSpacing: '0.8px' }}>PRODUCT IMAGE</label>
             <input type="file" accept="image/*" onChange={e => handleImageChange(e, false)} style={{ color: '#a1a1aa', fontSize: '13px' }} />
-            {productImagePreview && <img src={productImagePreview} alt="Preview" style={{ width: '100%', height: '160px', objectFit: 'cover', borderRadius: '8px', border: '1px solid #27272a' }} />}
+            {productImagePreview && <img src={productImagePreview} alt="Preview" style={{ width: '100%', height: '160px', objectFit: 'cover', borderRadius: '8px', border: '1px solid #e7e5e4' }} />}
           </div>
           <div style={styles.modalButtons}>
             <button style={styles.cancelBtn} onClick={() => { setShowAddProduct(false); setProductImagePreview(null); }}>Cancel</button>
@@ -1289,7 +1333,7 @@ const ReplyBox = ({ ratingId, onReplied }) => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <label style={{ color: '#71717a', fontSize: '11px', fontWeight: '600', letterSpacing: '0.8px' }}>PRODUCT IMAGE</label>
             <input type="file" accept="image/*" onChange={e => handleImageChange(e, true)} style={{ color: '#a1a1aa', fontSize: '13px' }} />
-            {(editImagePreview || editingProduct?.imageUrl) && <img src={editImagePreview || editingProduct.imageUrl} alt="Preview" style={{ width: '100%', height: '160px', objectFit: 'cover', borderRadius: '8px', border: '1px solid #27272a' }} />}
+            {(editImagePreview || editingProduct?.imageUrl) && <img src={editImagePreview || editingProduct.imageUrl} alt="Preview" style={{ width: '100%', height: '160px', objectFit: 'cover', borderRadius: '8px', border: '1px solid #e7e5e4' }} />}
           </div>
           <div style={styles.modalButtons}>
             <button style={styles.cancelBtn} onClick={() => { setShowEditProduct(false); setEditingProduct(null); setEditImagePreview(null); }}>Cancel</button>
@@ -1299,14 +1343,18 @@ const ReplyBox = ({ ratingId, onReplied }) => {
       )}
         {receiptOrder && <OrderReceiptModal order={receiptOrder} onClose={() => setReceiptOrder(null)} />}
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Libre+Baskerville:ital,wght@0,400;0,700&family=DM+Mono:wght@400;500&display=swap');
         @keyframes fadeSlideIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
         @keyframes toastIn { from { opacity: 0; transform: translateY(-16px); } to { opacity: 1; transform: translateY(0); } }
+        @media (min-width: 769px) {
+          .nearbuy-owner-sidebar { transform: translateX(0) !important; }
+          .nearbuy-owner-main { margin-left: 260px !important; }
+          .nearbuy-owner-hamburger { display: none !important; }
+        }
         @media (max-width: 768px) {
-          .sidebar { transform: translateX(-100%); }
-          .sidebar.open { transform: translateX(0); }
+          .nearbuy-owner-close-sidebar { display: flex !important; }
         }
       `}</style>
     </div>
@@ -1314,168 +1362,148 @@ const ReplyBox = ({ ratingId, onReplied }) => {
 };
 
 const styles = {
-  root: { display: 'flex', minHeight: '100vh', backgroundColor: '#0c0c0e', fontFamily: "'DM Sans', sans-serif", color: '#e4e4e7' },
+  root: { display: 'flex', minHeight: '100vh', backgroundColor: '#f7f5f1', fontFamily: "'DM Sans', system-ui, sans-serif", color: '#1e293b' },
 
-  toast: { position: 'fixed', top: '20px', right: '20px', zIndex: 9999, padding: '12px 20px', borderRadius: '10px', color: '#fff', fontSize: '14px', fontWeight: '500', boxShadow: '0 4px 20px rgba(0,0,0,0.4)', animation: 'toastIn 0.3s ease', display: 'flex', alignItems: 'center' },
+  toast: { position: 'fixed', top: '20px', right: '20px', zIndex: 9999, padding: '12px 20px', borderRadius: '10px', color: '#fff', fontSize: '14px', fontWeight: '500', boxShadow: '0 8px 24px rgba(15,23,42,0.12)', animation: 'toastIn 0.3s ease', display: 'flex', alignItems: 'center' },
 
-  overlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 998 },
+  overlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15,23,42,0.35)', zIndex: 998, backdropFilter: 'blur(2px)' },
 
-  // Sidebar
-  sidebar: { 
-    width: '260px', 
-    minWidth: '260px', 
-    backgroundColor: '#111114', 
-    borderRight: '1px solid #1f1f24', 
-    display: 'flex', 
-    flexDirection: 'column', 
+  sidebar: {
+    width: '260px',
+    minWidth: '260px',
+    backgroundColor: '#ffffff',
+    borderRight: '1px solid #e7e5e4',
+    display: 'flex',
+    flexDirection: 'column',
     position: 'fixed',
     top: 0,
     left: 0,
-    height: '100vh', 
+    height: '100vh',
     overflowY: 'auto',
+    overflowX: 'hidden',
     zIndex: 999,
-    transform: window.innerWidth > 768 ? 'translateX(0)' : 'translateX(-100%)',
+    transform: 'translateX(-100%)',
     transition: 'transform 0.3s ease',
+    boxShadow: '2px 0 12px rgba(15,23,42,0.04)',
   },
-  sidebarOpen: {
-    transform: 'translateX(0)',
-  },
-  sidebarHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px', borderBottom: '1px solid #1f1f24' },
+  sidebarOpen: { transform: 'translateX(0)' },
+  sidebarHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px', borderBottom: '1px solid #f5f5f4' },
   sidebarLogo: { display: 'flex', alignItems: 'center', gap: '10px' },
-  logoBox: { width: '36px', height: '36px', borderRadius: '10px', background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', fontWeight: '700', color: '#fff' },
-  logoText: { fontSize: '18px', fontWeight: '600', color: '#fff', letterSpacing: '-0.3px' },
-  closeSidebarBtn: { display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', backgroundColor: 'transparent', border: 'none', color: '#71717a', cursor: 'pointer', borderRadius: '8px' },
+  logoBox: { width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', fontWeight: '700', color: '#fff' },
+  logoText: { fontSize: '18px', fontWeight: '700', color: '#0f172a', letterSpacing: '-0.3px', fontFamily: "'Libre Baskerville', Georgia, serif" },
+  closeSidebarBtn: { display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', backgroundColor: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', borderRadius: '8px' },
   storeSelectorSection: { padding: '14px 12px 8px' },
-  sidebarSectionLabel: { fontSize: '10px', fontWeight: '600', color: '#52525b', letterSpacing: '1.2px', padding: '0 8px', display: 'block', marginBottom: '6px' },
+  sidebarSectionLabel: { fontSize: '10px', fontWeight: '600', color: '#94a3b8', letterSpacing: '1.2px', padding: '0 8px', display: 'block', marginBottom: '6px' },
   storeList: { display: 'flex', flexDirection: 'column', gap: '3px' },
-  storeBtn: { width: '100%', display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 12px', borderRadius: '8px', border: 'none', backgroundColor: 'transparent', color: '#71717a', fontSize: '13px', cursor: 'pointer', textAlign: 'left', fontFamily: "'DM Sans', sans-serif", transition: 'all 0.15s' },
-  storeBtnActive: { backgroundColor: '#1e2a3b', color: '#3b82f6' },
+  storeBtn: { width: '100%', display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 12px', borderRadius: '8px', border: 'none', backgroundColor: 'transparent', color: '#64748b', fontSize: '13px', cursor: 'pointer', textAlign: 'left', fontFamily: "'DM Sans', sans-serif", transition: 'all 0.15s' },
+  storeBtnActive: { backgroundColor: '#eef4f1', color: '#1e4d3a', fontWeight: '600' },
   storeBtnIcon: { fontSize: '14px', flexShrink: 0, display: 'flex', alignItems: 'center' },
   storeBtnName: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  addStoreBtn: { width: '100%', display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 12px', borderRadius: '8px', border: '1px dashed #27272a', backgroundColor: 'transparent', color: '#52525b', fontSize: '12px', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", transition: 'all 0.15s' },
-  sidebarNav: { flex: 1, padding: '8px 12px' },
-  sidebarBtn: { width: '100%', display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '8px', border: 'none', backgroundColor: 'transparent', color: '#71717a', fontSize: '13px', cursor: 'pointer', textAlign: 'left', fontFamily: "'DM Sans', sans-serif", fontWeight: '500', marginBottom: '2px', transition: 'all 0.15s' },
-  sidebarBtnActive: { backgroundColor: '#1e2a3b', color: '#3b82f6' },
+  addStoreBtn: { width: '100%', display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 12px', borderRadius: '8px', border: '1px dashed #d6d3d1', backgroundColor: 'transparent', color: '#64748b', fontSize: '12px', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", transition: 'all 0.15s' },
+  sidebarNav: { flex: 1, padding: '8px 12px', overflowX: 'hidden' },
+  sidebarBtn: { width: '100%', display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '8px', border: 'none', backgroundColor: 'transparent', color: '#64748b', fontSize: '13px', cursor: 'pointer', textAlign: 'left', fontFamily: "'DM Sans', sans-serif", fontWeight: '500', marginBottom: '2px', transition: 'all 0.15s' },
+  sidebarBtnActive: { backgroundColor: '#1e4d3a', color: '#ffffff', boxShadow: '0 1px 3px rgba(30,77,58,0.2)' },
   sidebarBtnIcon: { fontSize: '15px', flexShrink: 0, display: 'flex', alignItems: 'center' },
-  sidebarBadge: { marginLeft: 'auto', backgroundColor: '#f59e0b', color: '#fff', fontSize: '10px', fontWeight: '700', padding: '1px 6px', borderRadius: '999px', minWidth: '16px', textAlign: 'center' },
-  sidebarBottom: { padding: '16px', borderTop: '1px solid #1f1f24', display: 'flex', flexDirection: 'column', gap: '12px' },
+  sidebarBadge: { marginLeft: 'auto', backgroundColor: '#d97706', color: '#fff', fontSize: '10px', fontWeight: '700', padding: '1px 6px', borderRadius: '999px', minWidth: '16px', textAlign: 'center' },
+  sidebarBottom: { padding: '16px', borderTop: '1px solid #f5f5f4', display: 'flex', flexDirection: 'column', gap: '12px' },
   ownerProfile: { display: 'flex', alignItems: 'center', gap: '10px' },
-  ownerAvatar: { width: '36px', height: '36px', borderRadius: '8px', background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: '700', color: '#fff', flexShrink: 0 },
-  ownerName: { fontSize: '13px', fontWeight: '600', color: '#d4d4d8' },
-  ownerRole: { fontSize: '11px', color: '#52525b' },
-  logoutBtn: { width: '100%', padding: '10px', backgroundColor: '#1a1a1f', color: '#71717a', border: '1px solid #27272a', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontFamily: "'DM Sans', sans-serif", display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'all 0.15s' },
+  ownerAvatar: { width: '36px', height: '36px', borderRadius: '8px', backgroundColor: '#1e4d3a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: '700', color: '#fff', flexShrink: 0 },
+  ownerName: { fontSize: '13px', fontWeight: '600', color: '#0f172a' },
+  ownerRole: { fontSize: '11px', color: '#94a3b8' },
+  logoutBtn: { width: '100%', padding: '10px', backgroundColor: '#fff', color: '#64748b', border: '1px solid #e7e5e4', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontFamily: "'DM Sans', sans-serif", display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'all 0.15s' },
 
-  // Main
-  main: { flex: 1, display: 'flex', flexDirection: 'column', overflow: 'auto', marginLeft: window.innerWidth > 768 ? '260px' : '0' },
-  topbar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #1f1f24', flexWrap: 'wrap', gap: '16px' },
-  topbarLeft: { display: 'flex', alignItems: 'center', gap: '16px' },
-  hamburgerBtn: { display: 'flex', alignItems: 'center', justifyContent: 'center', width: '42px', height: '42px', backgroundColor: '#1a1a1f', border: '1px solid #27272a', borderRadius: '10px', color: '#e4e4e7', cursor: 'pointer', transition: 'all 0.15s' },
-  pageTitle: { fontSize: '18px', fontWeight: '600', color: '#fff', margin: '0 0 4px', letterSpacing: '-0.3px', display: 'flex', alignItems: 'center', gap: '8px' },
-  pageTitleIcon: { display: 'flex', alignItems: 'center', color: '#3b82f6' },
-  pageTitleStore: { color: '#52525b', fontWeight: '400' },
-  pageSubtitle: { fontSize: '13px', color: '#52525b', margin: 0 },
-  topbarRight: { display: 'flex', alignItems: 'center', gap: '12px' },
-  liveIndicator: { display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#3b82f6', fontWeight: '500' },
-  liveDot: { width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#3b82f6', animation: 'pulse 2s infinite', display: 'inline-block' },
+  main: { flex: 1, display: 'flex', flexDirection: 'column', overflow: 'auto', marginLeft: 0 },
+  topbar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', borderBottom: '1px solid #e7e5e4', flexWrap: 'wrap', gap: '12px', backgroundColor: 'rgba(247,245,241,0.95)', backdropFilter: 'blur(8px)', position: 'sticky', top: 0, zIndex: 20 },
+  topbarLeft: { display: 'flex', alignItems: 'center', gap: '16px', minWidth: 0 },
+  hamburgerBtn: { display: 'flex', alignItems: 'center', justifyContent: 'center', width: '42px', height: '42px', backgroundColor: '#fff', border: '1px solid #e7e5e4', borderRadius: '10px', color: '#475569', cursor: 'pointer', transition: 'all 0.15s', flexShrink: 0 },
+  pageTitle: { fontSize: '20px', fontWeight: '700', color: '#0f172a', margin: '0 0 4px', letterSpacing: '-0.3px', display: 'flex', alignItems: 'center', gap: '8px', fontFamily: "'Libre Baskerville', Georgia, serif" },
+  pageTitleIcon: { display: 'flex', alignItems: 'center', color: '#1e4d3a' },
+  pageTitleStore: { color: '#94a3b8', fontWeight: '400', fontFamily: "'DM Sans', sans-serif", fontSize: '16px' },
+  pageSubtitle: { fontSize: '13px', color: '#64748b', margin: 0 },
+  topbarRight: { display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', justifyContent: 'flex-end' },
+  liveIndicator: { display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#1e4d3a', fontWeight: '600', flexShrink: 0 },
+  liveDot: { width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#1e4d3a', animation: 'pulse 2s infinite', display: 'inline-block' },
   content: { padding: '24px', flex: 1 },
 
-  // Charts
   chartsRow: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '18px', marginBottom: '24px' },
-  chartCard: { backgroundColor: '#111114', border: '1px solid #1f1f24', borderRadius: '14px', padding: '20px' },
+  chartCard: { backgroundColor: '#ffffff', border: '1px solid #e7e5e4', borderRadius: '14px', padding: '20px', boxShadow: '0 1px 3px rgba(15,23,42,0.04)' },
   chartHeader: { marginBottom: '12px' },
-  chartTitle: { fontSize: '13px', fontWeight: '600', color: '#e4e4e7', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' },
+  chartTitle: { fontSize: '13px', fontWeight: '600', color: '#334155', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' },
 
-  // Stats
   statsRow: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '14px', marginBottom: '24px' },
-  statCard: { backgroundColor: '#111114', border: '1px solid #1f1f24', borderRadius: '12px', padding: '18px', animation: 'fadeSlideIn 0.4s ease both', transition: 'all 0.2s ease' },
+  statCard: { backgroundColor: '#ffffff', border: '1px solid #e7e5e4', borderRadius: '12px', padding: '18px', animation: 'fadeSlideIn 0.4s ease both', transition: 'all 0.2s ease', boxShadow: '0 1px 3px rgba(15,23,42,0.04)' },
   statTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' },
-  statLabel: { fontSize: '11px', color: '#52525b', fontWeight: '500', letterSpacing: '0.3px' },
-  statValue: { fontSize: '24px', fontWeight: '600', letterSpacing: '-0.5px', marginBottom: '10px' },
-  statBar: { height: '3px', backgroundColor: '#1f1f24', borderRadius: '999px', overflow: 'hidden' },
-  statBarFill: { height: '100%', borderRadius: '999px', opacity: '0.6' },
+  statLabel: { fontSize: '11px', color: '#64748b', fontWeight: '500', letterSpacing: '0.3px' },
+  statValue: { fontSize: '24px', fontWeight: '700', letterSpacing: '-0.5px', marginBottom: '10px', fontFamily: "'Libre Baskerville', Georgia, serif" },
+  statBar: { height: '3px', backgroundColor: '#f1f5f9', borderRadius: '999px', overflow: 'hidden' },
+  statBarFill: { height: '100%', borderRadius: '999px', opacity: '0.7' },
 
-  // Overview
   overviewGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '18px' },
-  overviewCard: { backgroundColor: '#111114', border: '1px solid #1f1f24', borderRadius: '14px', padding: '22px' },
-  overviewCardTitle: { fontSize: '14px', fontWeight: '600', color: '#e4e4e7', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' },
-  overviewEmpty: { color: '#3f3f46', fontSize: '13px', textAlign: 'center', padding: '16px 0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' },
-  lowStockItem: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', backgroundColor: '#1a1a1f', borderRadius: '8px' },
-  recentOrderItem: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', backgroundColor: '#1a1a1f', borderRadius: '8px' },
-  progressBar: { height: '5px', backgroundColor: '#1f1f24', borderRadius: '999px', overflow: 'hidden' },
+  overviewCard: { backgroundColor: '#ffffff', border: '1px solid #e7e5e4', borderRadius: '14px', padding: '22px', boxShadow: '0 1px 3px rgba(15,23,42,0.04)' },
+  overviewCardTitle: { fontSize: '14px', fontWeight: '600', color: '#334155', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' },
+  overviewEmpty: { color: '#94a3b8', fontSize: '13px', textAlign: 'center', padding: '16px 0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' },
+  lowStockItem: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', backgroundColor: '#faf9f7', borderRadius: '8px', border: '1px solid #f5f5f4' },
+  recentOrderItem: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', backgroundColor: '#faf9f7', borderRadius: '8px', border: '1px solid #f5f5f4' },
+  progressBar: { height: '5px', backgroundColor: '#f1f5f9', borderRadius: '999px', overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: '999px' },
 
-  // Table
   sectionHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' },
-  addBtn: { padding: '10px 18px', background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', fontFamily: "'DM Sans', sans-serif", display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.15s' },
-  tableWrapper: { backgroundColor: '#111114', border: '1px solid #1f1f24', borderRadius: '12px', overflow: 'auto', animation: 'fadeSlideIn 0.4s ease both' },
+  addBtn: { padding: '10px 18px', backgroundColor: '#1e4d3a', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', fontFamily: "'DM Sans', sans-serif", display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.15s' },
+  tableWrapper: { backgroundColor: '#ffffff', border: '1px solid #e7e5e4', borderRadius: '12px', overflow: 'auto', animation: 'fadeSlideIn 0.4s ease both', boxShadow: '0 1px 3px rgba(15,23,42,0.04)' },
   table: { width: '100%', borderCollapse: 'collapse', minWidth: '700px' },
-  th: { padding: '12px 16px', textAlign: 'left', fontSize: '10px', fontWeight: '600', color: '#52525b', letterSpacing: '0.8px', textTransform: 'uppercase', borderBottom: '1px solid #1f1f24', backgroundColor: '#0e0e12', fontFamily: "'DM Mono', monospace" },
-  tr: { borderBottom: '1px solid #1a1a1f', animation: 'fadeSlideIn 0.4s ease both', transition: 'background 0.15s' },
+  th: { padding: '12px 16px', textAlign: 'left', fontSize: '10px', fontWeight: '600', color: '#64748b', letterSpacing: '0.8px', textTransform: 'uppercase', borderBottom: '1px solid #e7e5e4', backgroundColor: '#faf9f7', fontFamily: "'DM Mono', monospace" },
+  tr: { borderBottom: '1px solid #f5f5f4', animation: 'fadeSlideIn 0.4s ease both', transition: 'background 0.15s' },
   td: { padding: '13px 16px', verticalAlign: 'middle' },
-  orderIdBadge: { fontFamily: "'DM Mono', monospace", fontSize: '12px', color: '#3b82f6', backgroundColor: '#1e2a3b', padding: '2px 8px', borderRadius: '4px' },
-  tdMuted: { fontSize: '13px', color: '#71717a' },
-  actionBtn: { padding: '6px 12px', backgroundColor: 'transparent', color: '#3b82f6', border: '1px solid #2d3a4d', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', fontWeight: '600', fontFamily: "'DM Sans', sans-serif", transition: 'all 0.15s' },
-  searchWrap: { flex: 1, display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#111114', border: '1px solid #1f1f24', borderRadius: '10px', padding: '10px 14px', maxWidth: '400px' },
-  searchInput: { flex: 1, background: 'none', border: 'none', outline: 'none', color: '#e4e4e7', fontSize: '13px', fontFamily: "'DM Sans', sans-serif" },
-  clearSearch: { background: 'none', border: 'none', color: '#52525b', cursor: 'pointer', fontSize: '13px', display: 'flex', alignItems: 'center' },
-  filterRow: { display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '20px', marginTop: '12px' },
-  filterPill: { display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#111114', color: '#71717a', border: '1px solid #1f1f24', borderRadius: '20px', padding: '6px 14px', cursor: 'pointer', fontSize: '11px', fontWeight: '500', transition: 'all 0.15s', fontFamily: "'DM Sans', sans-serif" },
-  filterCount: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '18px', height: '18px', borderRadius: '10px', fontSize: '10px', fontWeight: 'bold', padding: '0 4px' },
+  orderIdBadge: { fontFamily: "'DM Mono', monospace", fontSize: '12px', color: '#1e4d3a', backgroundColor: '#eef4f1', padding: '2px 8px', borderRadius: '4px', fontWeight: '600' },
+  tdMuted: { fontSize: '13px', color: '#64748b' },
+  actionBtn: { padding: '6px 12px', backgroundColor: '#fff', color: '#1e4d3a', border: '1px solid #c5d9ce', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', fontWeight: '600', fontFamily: "'DM Sans', sans-serif", transition: 'all 0.15s' },
+  searchWrap: { flex: '1 1 220px', display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#ffffff', border: '1px solid #d6d3d1', borderRadius: '10px', padding: '8px 12px', maxWidth: '360px', minWidth: '180px' },
+  searchInput: { flex: 1, background: 'none', border: 'none', outline: 'none', color: '#1e293b', fontSize: '13px', fontFamily: "'DM Sans', sans-serif", minWidth: 0 },
+  clearSearch: { background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '13px', display: 'flex', alignItems: 'center' },
+  filterRow: { display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '20px' },
+  filterPill: { display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#ffffff', color: '#64748b', border: '1px solid #e7e5e4', borderRadius: '20px', padding: '6px 14px', cursor: 'pointer', fontSize: '11px', fontWeight: '500', transition: 'all 0.15s', fontFamily: "'DM Sans', sans-serif" },
+  filterCount: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '18px', height: '18px', borderRadius: '10px', fontSize: '10px', fontWeight: 'bold', padding: '0 4px', backgroundColor: '#f1f5f9' },
 
-  // Products
   productsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '18px' },
-  productCard: { backgroundColor: '#111114', borderRadius: '14px', padding: '18px', border: '1px solid #1f1f24', transition: 'all 0.2s ease' },
-  noImage: { width: '100%', height: '150px', backgroundColor: '#1a1a1f', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3f3f46', fontSize: '13px', marginBottom: '12px', gap: '8px' },
-  productName: { fontSize: '16px', color: '#e4e4e7', marginBottom: '6px', fontWeight: '600' },
-  productCategory: { color: '#3b82f6', fontSize: '12px', marginBottom: '4px' },
-  productPrice: { color: '#3b82f6', fontSize: '15px', fontWeight: 'bold', marginBottom: '4px' },
-  productStock: { color: '#71717a', fontSize: '12px', marginBottom: '4px' },
-  productDesc: { color: '#52525b', fontSize: '12px', marginBottom: '14px' },
-  editBtn: { padding: '8px', backgroundColor: '#1c2a1a', color: '#3b82f6', border: '1px solid #2d3a4d', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontFamily: "'DM Sans', sans-serif", transition: 'all 0.15s' },
-  deleteBtn: { padding: '8px', backgroundColor: '#1a1111', color: '#ef4444', border: '1px solid #2d1818', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontFamily: "'DM Sans', sans-serif", transition: 'all 0.15s' },
-  lowStockWarning: { backgroundColor: '#f59e0b22', color: '#f59e0b', fontSize: '11px', fontWeight: 'bold', padding: '6px 10px', borderRadius: '6px', marginBottom: '10px', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' },
+  productCard: { backgroundColor: '#ffffff', borderRadius: '14px', padding: '18px', border: '1px solid #e7e5e4', transition: 'all 0.2s ease', boxShadow: '0 1px 3px rgba(15,23,42,0.04)' },
+  noImage: { width: '100%', height: '150px', backgroundColor: '#faf9f7', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '13px', marginBottom: '12px', gap: '8px', border: '1px dashed #e7e5e4' },
+  productName: { fontSize: '16px', color: '#0f172a', marginBottom: '6px', fontWeight: '600' },
+  productCategory: { color: '#1e4d3a', fontSize: '12px', marginBottom: '4px', fontWeight: '500' },
+  productPrice: { color: '#1e4d3a', fontSize: '15px', fontWeight: 'bold', marginBottom: '4px' },
+  productStock: { color: '#64748b', fontSize: '12px', marginBottom: '4px' },
+  productDesc: { color: '#94a3b8', fontSize: '12px', marginBottom: '14px' },
+  editBtn: { padding: '8px', backgroundColor: '#eef4f1', color: '#1e4d3a', border: '1px solid #c5d9ce', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontFamily: "'DM Sans', sans-serif", transition: 'all 0.15s' },
+  deleteBtn: { padding: '8px', backgroundColor: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontFamily: "'DM Sans', sans-serif", transition: 'all 0.15s' },
+  lowStockWarning: { backgroundColor: '#fffbeb', color: '#b45309', fontSize: '11px', fontWeight: 'bold', padding: '6px 10px', borderRadius: '6px', marginBottom: '10px', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', border: '1px solid #fde68a' },
 
-  // Messages
-  conversationCard: { backgroundColor: '#111114', border: '1px solid #1f1f24', borderRadius: '12px', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '8px', transition: 'all 0.15s' },
-  convAvatar: { width: '42px', height: '42px', borderRadius: '10px', backgroundColor: '#1a1a1f', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#52525b', flexShrink: 0 },
+  conversationCard: { backgroundColor: '#ffffff', border: '1px solid #e7e5e4', borderRadius: '12px', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '8px', transition: 'all 0.15s', boxShadow: '0 1px 2px rgba(15,23,42,0.03)' },
+  convAvatar: { width: '42px', height: '42px', borderRadius: '10px', backgroundColor: '#eef4f1', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1e4d3a', flexShrink: 0 },
 
-  // Ratings
-  ratingsSummaryCard: { backgroundColor: '#111114', border: '1px solid #1f1f24', borderRadius: '12px', padding: '20px', display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '24px' },
-  ratingCard: { backgroundColor: '#111114', border: '1px solid #1f1f24', borderRadius: '12px', padding: '16px', marginBottom: '10px' },
+  ratingsSummaryCard: { backgroundColor: '#ffffff', border: '1px solid #e7e5e4', borderRadius: '12px', padding: '20px', display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '24px', boxShadow: '0 1px 3px rgba(15,23,42,0.04)' },
+  ratingCard: { backgroundColor: '#ffffff', border: '1px solid #e7e5e4', borderRadius: '12px', padding: '16px', marginBottom: '10px', boxShadow: '0 1px 2px rgba(15,23,42,0.03)' },
 
-  // Feedback
-  feedbackStatCard: { flex: '1 1 150px', backgroundColor: '#111114', border: '1px solid #1f1f24', borderRadius: '12px', padding: '18px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' },
-  feedbackCard: { backgroundColor: '#111114', border: '1px solid #1f1f24', borderRadius: '14px', padding: '20px' },
+  feedbackStatCard: { flex: '1 1 150px', backgroundColor: '#ffffff', border: '1px solid #e7e5e4', borderRadius: '12px', padding: '18px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', boxShadow: '0 1px 3px rgba(15,23,42,0.04)' },
+  feedbackCard: { backgroundColor: '#ffffff', border: '1px solid #e7e5e4', borderRadius: '14px', padding: '20px', boxShadow: '0 1px 3px rgba(15,23,42,0.04)' },
 
-  // Profile
-  profileForm: { backgroundColor: '#111114', border: '1px solid #1f1f24', borderRadius: '14px', padding: '28px' },
+  profileForm: { backgroundColor: '#ffffff', border: '1px solid #e7e5e4', borderRadius: '14px', padding: '28px', boxShadow: '0 1px 3px rgba(15,23,42,0.04)' },
   profileGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '18px' },
   profileField: { display: 'flex', flexDirection: 'column', gap: '8px' },
-  profileLabel: { fontSize: '10px', fontWeight: '600', color: '#52525b', letterSpacing: '0.8px' },
-  profileInputBox: { backgroundColor: '#1a1a1f', border: '1px solid #27272a', borderRadius: '10px', overflow: 'hidden' },
-  profileInput: { width: '100%', padding: '12px 14px', backgroundColor: '#1a1a1f', border: '1px solid #27272a', borderRadius: '10px', color: '#e4e4e7', fontSize: '14px', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' },
-  saveProfileBtn: { padding: '12px 28px', background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)', color: '#fff', border: 'none', borderRadius: '10px', cursor: 'pointer', fontSize: '14px', fontWeight: '600', fontFamily: "'DM Sans', sans-serif", boxShadow: '0 4px 16px rgba(59,130,246,0.25)' },
+  profileLabel: { fontSize: '10px', fontWeight: '600', color: '#64748b', letterSpacing: '0.8px' },
+  profileInputBox: { backgroundColor: '#fff', border: '1px solid #e7e5e4', borderRadius: '10px', overflow: 'hidden' },
+  profileInput: { width: '100%', padding: '12px 14px', backgroundColor: '#fff', border: '1px solid #e7e5e4', borderRadius: '10px', color: '#1e293b', fontSize: '14px', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' },
+  saveProfileBtn: { padding: '12px 28px', backgroundColor: '#1e4d3a', color: '#fff', border: 'none', borderRadius: '10px', cursor: 'pointer', fontSize: '14px', fontWeight: '600', fontFamily: "'DM Sans', sans-serif" },
 
-  // Empty
-  emptyState: { textAlign: 'center', padding: '60px 20px', color: '#52525b' },
-  emptyIcon: { fontSize: '40px', marginBottom: '12px', display: 'flex', justifyContent: 'center' },
+  emptyState: { textAlign: 'center', padding: '60px 20px', color: '#64748b' },
+  emptyIcon: { fontSize: '40px', marginBottom: '12px', display: 'flex', justifyContent: 'center', color: '#94a3b8' },
   emptyText: { fontSize: '14px' },
 
-  // Modal
-  modal: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' },
-  modalBox: { backgroundColor: '#111114', borderRadius: '16px', padding: '28px', border: '1px solid #1f1f24', width: '100%', maxWidth: '420px', display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '90vh', overflowY: 'auto' },
-  modalTitle: { fontSize: '18px', fontWeight: '600', color: '#fff', marginBottom: '8px' },
-  modalInput: { padding: '12px 14px', backgroundColor: '#1a1a1f', border: '1px solid #27272a', borderRadius: '10px', color: '#e4e4e7', fontSize: '14px', outline: 'none', fontFamily: 'inherit' },
+  modal: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15,23,42,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px', backdropFilter: 'blur(4px)' },
+  modalBox: { backgroundColor: '#ffffff', borderRadius: '16px', padding: '28px', border: '1px solid #e7e5e4', width: '100%', maxWidth: '420px', display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 40px rgba(15,23,42,0.12)' },
+  modalTitle: { fontSize: '18px', fontWeight: '700', color: '#0f172a', marginBottom: '8px', fontFamily: "'Libre Baskerville', Georgia, serif" },
+  modalInput: { padding: '12px 14px', backgroundColor: '#fff', border: '1px solid #e7e5e4', borderRadius: '10px', color: '#1e293b', fontSize: '14px', outline: 'none', fontFamily: 'inherit' },
   modalButtons: { display: 'flex', gap: '12px', marginTop: '8px' },
-  cancelBtn: { flex: 1, padding: '11px', backgroundColor: 'transparent', color: '#71717a', border: '1px solid #27272a', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontFamily: "'DM Sans', sans-serif" },
-  saveBtn: { flex: 1, padding: '11px', background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '600', fontFamily: "'DM Sans', sans-serif" },
-
-  // Desktop styles - added via media query in the style tag
-  '@media (min-width: 769px)': {
-    sidebar: { transform: 'translateX(0)', position: 'sticky' },
-    main: { marginLeft: '260px' },
-    hamburgerBtn: { display: 'none' },
-  }
+  cancelBtn: { flex: 1, padding: '11px', backgroundColor: '#fff', color: '#64748b', border: '1px solid #e7e5e4', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontFamily: "'DM Sans', sans-serif" },
+  saveBtn: { flex: 1, padding: '11px', backgroundColor: '#1e4d3a', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '600', fontFamily: "'DM Sans', sans-serif" },
 };
 
 export default StoreOwnerDashboard;
